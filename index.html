@@ -47,7 +47,7 @@
                     <i class="fa-solid fa-utensils text-orange-500 text-2xl"></i>
                     <div class="flex flex-col leading-none">
                         <span class="font-bold text-xl tracking-wider">三口ㄜ ˋ了<span class="text-orange-500">點餐系統Pro</span></span>
-                        <span class="text-[10px] text-gray-400 font-mono">v202512090443</span>
+                        <span class="text-[10px] text-gray-400 font-mono">v202512091721</span>
                     </div>
                 </div>
                 
@@ -241,7 +241,10 @@
             db.tables['T3'].totalAmount = 580;
             db.orders = [
                 { id: 'ORD-1001', tableId: 'T2', timestamp: now - (76 * 60 * 1000), status: 'served', items: [{ name: '奶油培根義大利麵', price: 220, comboName: '經典套餐', comboPrice: 119, subItems: ['可口可樂', '法式烤布蕾'], itemTotal: 339, basePrice: 220 }], total: 339 },
-                { id: 'ORD-1002', tableId: 'T3', timestamp: now - (10 * 60 * 1000), status: 'pending', items: [{ name: '紐約客牛排', price: 580, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 580, basePrice: 580 }], total: 580 }
+                { id: 'ORD-1002', tableId: 'T3', timestamp: now - (10 * 60 * 1000), status: 'pending', items: [{ name: '紐約客牛排', price: 580, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 580, basePrice: 580 }], total: 580 },
+                // 增加一些假資料讓圖表好看
+                { id: 'ORD-999', tableId: 'T1', timestamp: now - (120 * 60 * 1000), status: 'served', items: [{ name: '紐約客牛排', price: 580, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 580, basePrice: 580 }], total: 580 },
+                { id: 'ORD-998', tableId: 'T1', timestamp: now - (120 * 60 * 1000), status: 'served', items: [{ name: '松露野菇燉飯', price: 280, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 280, basePrice: 280 }], total: 280 }
             ];
             db.menu[3].available = false;
         }
@@ -255,6 +258,14 @@
                 if (db.view === 'kitchen') renderKitchenView(document.getElementById('app-container'));
             }, 10000); 
             if (window.RestaurantDB.view === 'customer' && !window.RestaurantDB.currentTableId) showTableSelectModal();
+        }
+
+        // --- Demo Reset ---
+        function resetDemo() {
+            if(confirm('【銷售員專用】確定要重置所有數據嗎？\n這將清空所有訂單並恢復預設值。')) {
+                localStorage.removeItem('gourmetOS_v2');
+                location.reload();
+            }
         }
 
         function renderAll() {
@@ -415,7 +426,6 @@
                 const isExpanded = db.uiState.expandedCardId === item.id;
                 const isSoldOut = !item.available;
                 
-                // 這裡的 handleImageError 呼叫已經修正，不會再出現程式碼外洩問題
                 html += `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md ${isExpanded ? 'ring-2 ring-orange-100' : ''} ${isSoldOut ? 'item-sold-out relative' : ''}">
                         ${isSoldOut ? '<div class="badge-sold-out">SOLD OUT</div>' : ''}
@@ -625,10 +635,13 @@
             const serviceRequests = Object.values(db.tables).filter(t => t.serviceStatus);
             let html = `
                 <div class="bg-white border-b mb-6 sticky top-0 z-30">
-                    <div class="max-w-4xl mx-auto flex">
-                        <button onclick="setAdminTab('tables')" class="flex-1 py-4 text-sm font-bold border-b-2 ${tab==='tables'?'border-orange-500 text-orange-600':'border-transparent text-gray-500 hover:text-gray-700'}">桌況管理</button>
-                        <button onclick="setAdminTab('menu')" class="flex-1 py-4 text-sm font-bold border-b-2 ${tab==='menu'?'border-orange-500 text-orange-600':'border-transparent text-gray-500 hover:text-gray-700'}">餐點庫存</button>
-                        <button onclick="setAdminTab('dashboard')" class="flex-1 py-4 text-sm font-bold border-b-2 ${tab==='dashboard'?'border-orange-500 text-orange-600':'border-transparent text-gray-500 hover:text-gray-700'}">營收報表</button>
+                    <div class="max-w-4xl mx-auto flex items-center justify-between pr-4">
+                        <div class="flex flex-1">
+                            <button onclick="setAdminTab('tables')" class="flex-1 py-4 text-sm font-bold border-b-2 ${tab==='tables'?'border-orange-500 text-orange-600':'border-transparent text-gray-500 hover:text-gray-700'}">桌況管理</button>
+                            <button onclick="setAdminTab('menu')" class="flex-1 py-4 text-sm font-bold border-b-2 ${tab==='menu'?'border-orange-500 text-orange-600':'border-transparent text-gray-500 hover:text-gray-700'}">餐點庫存</button>
+                            <button onclick="setAdminTab('dashboard')" class="flex-1 py-4 text-sm font-bold border-b-2 ${tab==='dashboard'?'border-orange-500 text-orange-600':'border-transparent text-gray-500 hover:text-gray-700'}">營收報表</button>
+                        </div>
+                        <button onclick="resetDemo()" class="ml-4 bg-red-100 text-red-600 text-xs px-3 py-1 rounded-full hover:bg-red-200 font-bold border border-red-200">重置Demo</button>
                     </div>
                 </div>
                 <div class="max-w-4xl mx-auto p-4">
@@ -649,8 +662,21 @@
             if (tab === 'dashboard') {
                 const revenue = db.orders.filter(o => o.status === 'served').reduce((s,o)=>s+o.total, 0);
                 const count = db.orders.filter(o => o.status === 'served').length;
+                
+                // 計算熱銷商品
+                const itemCounts = {};
+                db.orders.forEach(o => {
+                    o.items.forEach(i => {
+                        itemCounts[i.name] = (itemCounts[i.name] || 0) + 1;
+                    });
+                });
+                const sortedItems = Object.entries(itemCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5);
+                const maxCount = sortedItems.length > 0 ? sortedItems[0][1] : 1;
+
                 html += `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                         <div class="bg-white p-6 rounded-xl shadow border-l-4 border-green-500">
                             <h3 class="text-gray-500 text-sm font-bold uppercase">今日營收</h3>
                             <p class="text-4xl font-bold mt-2">$${revenue.toLocaleString()}</p>
@@ -658,6 +684,24 @@
                         <div class="bg-white p-6 rounded-xl shadow border-l-4 border-blue-500">
                             <h3 class="text-gray-500 text-sm font-bold uppercase">出餐數</h3>
                             <p class="text-4xl font-bold mt-2">${count}</p>
+                        </div>
+                    </div>
+
+                    <!-- 熱銷排行榜 Chart -->
+                    <div class="bg-white p-6 rounded-xl shadow">
+                        <h3 class="font-bold text-lg text-gray-800 mb-4 border-b pb-2">🔥 熱銷商品排行榜</h3>
+                        <div class="space-y-4">
+                            ${sortedItems.length === 0 ? '<p class="text-gray-400">暫無數據</p>' : sortedItems.map(([name, val]) => `
+                                <div>
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="font-medium text-gray-700">${name}</span>
+                                        <span class="font-bold text-gray-900">${val} 份</span>
+                                    </div>
+                                    <div class="w-full bg-gray-100 rounded-full h-2.5">
+                                        <div class="bg-orange-500 h-2.5 rounded-full" style="width: ${(val / maxCount) * 100}%"></div>
+                                    </div>
+                                </div>
+                            `).join('')}
                         </div>
                     </div>
                 `;
