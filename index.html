@@ -2,7 +2,11 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- PWA 偽裝設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#f97316">
     <title>Gourmet OS Pro - 智慧餐廳系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -137,6 +141,19 @@
     </div>
 
     <script>
+        // --- 全域工具函式：處理圖片錯誤 (Fix for broken images) ---
+        function handleImageError(img, fallbackIcon) {
+            img.onerror = null; // 防止無限迴圈
+            // 將原本的 img 標籤替換成一個漂亮的 icon 容器
+            // 注意：這裡是直接操作 DOM，避免了 HTML 字串拼接的引號衝突問題
+            const parent = img.parentElement;
+            parent.innerHTML = `
+                <div class="w-full h-full bg-orange-50 flex items-center justify-center text-orange-300 text-4xl">
+                    <i class="fa-solid ${fallbackIcon}"></i>
+                </div>
+            `;
+        }
+
         // --- 1. 資料結構與持久化 ---
         
         const DEFAULT_DB = {
@@ -163,14 +180,14 @@
                 salad: ['凱薩沙拉', '和風油醋'],
                 bread: ['香蒜麵包', '奶油餐包']
             },
-            // 使用真實圖片網址 (Unsplash Source)
+            // 使用真實圖片網址，並加入備用 icon
             menu: [
-                { id: 1, category: 'pasta', name: '奶油培根義大利麵', desc: '濃厚白醬配上煙燻培根', price: 220, image: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=800&q=80', available: true },
-                { id: 2, category: 'pasta', name: '青醬蛤蠣義大利麵', desc: '新鮮羅勒與大顆蛤蠣', price: 240, image: 'https://images.unsplash.com/photo-1626844131082-256783844137?auto=format&fit=crop&w=800&q=80', available: true },
-                { id: 3, category: 'risotto', name: '松露野菇燉飯', desc: '進口松露油與綜合野菇', price: 280, image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=800&q=80', available: true },
-                { id: 4, category: 'risotto', name: '海鮮番茄燉飯', desc: '酸甜茄汁與綜合海鮮', price: 300, image: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=800&q=80', available: true },
-                { id: 5, category: 'steak', name: '紐約客牛排', desc: '10oz 嚴選部位，多汁軟嫩', price: 580, image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=800&q=80', available: true },
-                { id: 6, category: 'drink', name: '特調水果茶', desc: '新鮮水果切片', price: 120, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80', available: true }
+                { id: 1, category: 'pasta', name: '奶油培根義大利麵', desc: '濃厚白醬配上煙燻培根', price: 220, image: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-wheat-awn', available: true },
+                { id: 2, category: 'pasta', name: '青醬蛤蠣義大利麵', desc: '新鮮羅勒與大顆蛤蠣', price: 240, image: 'https://images.unsplash.com/photo-1626844131082-256783844137?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-leaf', available: true },
+                { id: 3, category: 'risotto', name: '松露野菇燉飯', desc: '進口松露油與綜合野菇', price: 280, image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-bowl-rice', available: true },
+                { id: 4, category: 'risotto', name: '海鮮番茄燉飯', desc: '酸甜茄汁與綜合海鮮', price: 300, image: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-shrimp', available: true },
+                { id: 5, category: 'steak', name: '紐約客牛排', desc: '10oz 嚴選部位，多汁軟嫩', price: 580, image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-drumstick-bite', available: true },
+                { id: 6, category: 'drink', name: '特調水果茶', desc: '新鮮水果切片', price: 120, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-glass-water', available: true }
             ],
             categories: [
                 { id: 'all', name: '全部' },
@@ -192,6 +209,7 @@
             const saved = localStorage.getItem('gourmetOS_v2');
             if (saved) {
                 window.RestaurantDB = JSON.parse(saved);
+                // 強制重置 UI 狀態，避免卡在怪怪的地方
                 window.RestaurantDB.uiState = DEFAULT_DB.uiState;
             } else {
                 window.RestaurantDB = JSON.parse(JSON.stringify(DEFAULT_DB));
@@ -370,6 +388,7 @@
             }
         }
 
+        // 修改後的 renderCustomerView: 使用 handleImageError 解決引號衝突
         function renderCustomerView(container) {
             const db = window.RestaurantDB;
             let html = `
@@ -392,14 +411,16 @@
                 const isExpanded = db.uiState.expandedCardId === item.id;
                 const isSoldOut = !item.available;
                 
+                // 這裡使用了 handleImageError(this, '${item.fallbackIcon}')
+                // 乾淨、簡單，不會再有引號打架的問題
                 html += `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md ${isExpanded ? 'ring-2 ring-orange-100' : ''} ${isSoldOut ? 'item-sold-out relative' : ''}">
                         ${isSoldOut ? '<div class="badge-sold-out">SOLD OUT</div>' : ''}
                         <div class="cursor-pointer group" onclick="${isSoldOut ? '' : `toggleCard(${item.id})`}">
                             <!-- 卡片上半部：圖片與資訊 -->
                             <div class="flex p-4 gap-4">
-                                <div class="w-24 h-24 flex-shrink-0">
-                                    <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover rounded-lg shadow-sm group-hover:scale-105 transition-transform duration-300">
+                                <div class="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden relative">
+                                    <img src="${item.image}" alt="${item.name}" onerror="handleImageError(this, '${item.fallbackIcon}')" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                                 </div>
                                 <div class="flex-1 flex flex-col justify-between">
                                     <div>
@@ -699,7 +720,9 @@
                                 ${db.menu.map(item => `
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center gap-3">
-                                            <img src="${item.image}" class="w-10 h-10 rounded object-cover shadow-sm">
+                                            <div class="w-10 h-10 rounded overflow-hidden relative bg-gray-100">
+                                                <img src="${item.image}" onerror="handleImageError(this, '${item.fallbackIcon}')" class="w-full h-full object-cover">
+                                            </div>
                                             ${item.name}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$${item.price}</td>
