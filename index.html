@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#f97316">
-    <title>Gourmet OS Pro - 智慧餐廳系統</title>
+    <title>三口ㄜ ˋ了點餐系統Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -45,7 +45,10 @@
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center gap-2">
                     <i class="fa-solid fa-utensils text-orange-500 text-2xl"></i>
-                    <span class="font-bold text-xl tracking-wider hidden sm:inline">Gourmet<span class="text-orange-500">OS</span> Pro</span>
+                    <div class="flex flex-col leading-none">
+                        <span class="font-bold text-xl tracking-wider">三口ㄜ ˋ了<span class="text-orange-500">點餐系統Pro</span></span>
+                        <span class="text-[10px] text-gray-400 font-mono">v202512090443</span>
+                    </div>
                 </div>
                 
                 <div id="customer-nav-actions" class="hidden items-center gap-3">
@@ -141,17 +144,13 @@
     </div>
 
     <script>
-        // --- 全域工具函式：處理圖片錯誤 (Fix for broken images) ---
-        function handleImageError(img, fallbackIcon) {
+        // --- 全域工具函式：雙保險圖片處理 ---
+        // 當圖片載入失敗 (onerror) 時，自動替換為 Emoji
+        function handleImageError(img, emoji) {
             img.onerror = null; // 防止無限迴圈
-            // 將原本的 img 標籤替換成一個漂亮的 icon 容器
-            // 注意：這裡是直接操作 DOM，避免了 HTML 字串拼接的引號衝突問題
             const parent = img.parentElement;
-            parent.innerHTML = `
-                <div class="w-full h-full bg-orange-50 flex items-center justify-center text-orange-300 text-4xl">
-                    <i class="fa-solid ${fallbackIcon}"></i>
-                </div>
-            `;
+            // 將父容器內容替換為 Emoji 顯示
+            parent.innerHTML = '<div class="w-full h-full bg-orange-50 flex items-center justify-center text-5xl select-none">' + emoji + '</div>';
         }
 
         // --- 1. 資料結構與持久化 ---
@@ -180,14 +179,14 @@
                 salad: ['凱薩沙拉', '和風油醋'],
                 bread: ['香蒜麵包', '奶油餐包']
             },
-            // 使用真實圖片網址，並加入備用 icon
+            // 同時設定圖片與 Emoji，確保雙重保險
             menu: [
-                { id: 1, category: 'pasta', name: '奶油培根義大利麵', desc: '濃厚白醬配上煙燻培根', price: 220, image: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-wheat-awn', available: true },
-                { id: 2, category: 'pasta', name: '青醬蛤蠣義大利麵', desc: '新鮮羅勒與大顆蛤蠣', price: 240, image: 'https://images.unsplash.com/photo-1626844131082-256783844137?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-leaf', available: true },
-                { id: 3, category: 'risotto', name: '松露野菇燉飯', desc: '進口松露油與綜合野菇', price: 280, image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-bowl-rice', available: true },
-                { id: 4, category: 'risotto', name: '海鮮番茄燉飯', desc: '酸甜茄汁與綜合海鮮', price: 300, image: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-shrimp', available: true },
-                { id: 5, category: 'steak', name: '紐約客牛排', desc: '10oz 嚴選部位，多汁軟嫩', price: 580, image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-drumstick-bite', available: true },
-                { id: 6, category: 'drink', name: '特調水果茶', desc: '新鮮水果切片', price: 120, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80', fallbackIcon: 'fa-glass-water', available: true }
+                { id: 1, category: 'pasta', name: '奶油培根義大利麵', desc: '濃厚白醬配上煙燻培根', price: 220, image: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍝', available: true },
+                { id: 2, category: 'pasta', name: '青醬蛤蠣義大利麵', desc: '新鮮羅勒與大顆蛤蠣', price: 240, image: 'https://images.unsplash.com/photo-1626844131082-256783844137?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🌿', available: true },
+                { id: 3, category: 'risotto', name: '松露野菇燉飯', desc: '進口松露油與綜合野菇', price: 280, image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍄', available: true },
+                { id: 4, category: 'risotto', name: '海鮮番茄燉飯', desc: '酸甜茄汁與綜合海鮮', price: 300, image: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🦐', available: true },
+                { id: 5, category: 'steak', name: '紐約客牛排', desc: '10oz 嚴選部位，多汁軟嫩', price: 580, image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🥩', available: true },
+                { id: 6, category: 'drink', name: '特調水果茶', desc: '新鮮水果切片', price: 120, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍹', available: true }
             ],
             categories: [
                 { id: 'all', name: '全部' },
@@ -209,8 +208,15 @@
             const saved = localStorage.getItem('gourmetOS_v2');
             if (saved) {
                 window.RestaurantDB = JSON.parse(saved);
-                // 強制重置 UI 狀態，避免卡在怪怪的地方
                 window.RestaurantDB.uiState = DEFAULT_DB.uiState;
+                
+                // 資料結構遷移 (確保有 image 和 emoji)
+                window.RestaurantDB.menu.forEach((m, idx) => {
+                    if(DEFAULT_DB.menu[idx]) {
+                        if (!m.emoji) m.emoji = DEFAULT_DB.menu[idx].emoji;
+                        if (!m.image) m.image = DEFAULT_DB.menu[idx].image;
+                    }
+                });
             } else {
                 window.RestaurantDB = JSON.parse(JSON.stringify(DEFAULT_DB));
                 initFakeData();
@@ -237,7 +243,6 @@
                 { id: 'ORD-1001', tableId: 'T2', timestamp: now - (76 * 60 * 1000), status: 'served', items: [{ name: '奶油培根義大利麵', price: 220, comboName: '經典套餐', comboPrice: 119, subItems: ['可口可樂', '法式烤布蕾'], itemTotal: 339, basePrice: 220 }], total: 339 },
                 { id: 'ORD-1002', tableId: 'T3', timestamp: now - (10 * 60 * 1000), status: 'pending', items: [{ name: '紐約客牛排', price: 580, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 580, basePrice: 580 }], total: 580 }
             ];
-            // 預設海鮮燉飯售完
             db.menu[3].available = false;
         }
 
@@ -388,7 +393,6 @@
             }
         }
 
-        // 修改後的 renderCustomerView: 使用 handleImageError 解決引號衝突
         function renderCustomerView(container) {
             const db = window.RestaurantDB;
             let html = `
@@ -411,8 +415,7 @@
                 const isExpanded = db.uiState.expandedCardId === item.id;
                 const isSoldOut = !item.available;
                 
-                // 這裡使用了 handleImageError(this, '${item.fallbackIcon}')
-                // 乾淨、簡單，不會再有引號打架的問題
+                // 這裡的 handleImageError 呼叫已經修正，不會再出現程式碼外洩問題
                 html += `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md ${isExpanded ? 'ring-2 ring-orange-100' : ''} ${isSoldOut ? 'item-sold-out relative' : ''}">
                         ${isSoldOut ? '<div class="badge-sold-out">SOLD OUT</div>' : ''}
@@ -420,7 +423,10 @@
                             <!-- 卡片上半部：圖片與資訊 -->
                             <div class="flex p-4 gap-4">
                                 <div class="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden relative">
-                                    <img src="${item.image}" alt="${item.name}" onerror="handleImageError(this, '${item.fallbackIcon}')" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                    <img src="${item.image}" alt="${item.name}" 
+                                         onerror="handleImageError(this, '${item.emoji}')" 
+                                         referrerpolicy="no-referrer"
+                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                                 </div>
                                 <div class="flex-1 flex flex-col justify-between">
                                     <div>
@@ -721,7 +727,7 @@
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center gap-3">
                                             <div class="w-10 h-10 rounded overflow-hidden relative bg-gray-100">
-                                                <img src="${item.image}" onerror="handleImageError(this, '${item.fallbackIcon}')" class="w-full h-full object-cover">
+                                                <img src="${item.image}" onerror="handleImageError(this, '${item.emoji}')" class="w-full h-full object-cover">
                                             </div>
                                             ${item.name}
                                         </td>
