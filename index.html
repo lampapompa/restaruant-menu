@@ -12,7 +12,6 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* 動畫僅保留 Modal 的淡入，移除選單區域的頻繁動畫 */
         .fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
@@ -25,14 +24,13 @@
         .table-dining { background-color: #d1fae5; border: 2px solid #10b981; color: #065f46; }
         .table-urgent { background-color: #fee2e2; border: 2px solid #ef4444; color: #991b1b; animation: pulseBorder 2s infinite; }
         
-        /* 售完樣式 */
-        .item-sold-out { opacity: 0.6; pointer-events: none; filter: grayscale(100%); }
-        .badge-sold-out { position: absolute; top: 10px; right: 10px; background: #ef4444; color: white; font-weight: bold; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; transform: rotate(15deg); z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        /* 售完樣式 (圖片灰階) */
+        .item-sold-out { opacity: 0.8; pointer-events: none; }
+        .item-sold-out img { filter: grayscale(100%); }
+        .badge-sold-out { position: absolute; top: 10px; right: 10px; background: #ef4444; color: white; font-weight: bold; font-size: 0.75rem; padding: 4px 12px; border-radius: 4px; transform: rotate(15deg); z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.3); border: 2px solid white; }
 
-        /* 服務呼叫閃爍 */
         .service-calling { animation: servicePulse 1s infinite alternate; }
         @keyframes servicePulse { from { box-shadow: 0 0 5px #eab308; } to { box-shadow: 0 0 20px #eab308; border-color: #eab308; } }
-        @keyframes pulseBorder { 0% { border-color: #ef4444; } 50% { border-color: #f87171; } 100% { border-color: #ef4444; } }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 h-screen flex flex-col overflow-hidden">
@@ -46,7 +44,6 @@
                     <span class="font-bold text-xl tracking-wider hidden sm:inline">Gourmet<span class="text-orange-500">OS</span> Pro</span>
                 </div>
                 
-                <!-- 顧客端功能區 -->
                 <div id="customer-nav-actions" class="hidden items-center gap-3">
                     <div id="current-table-display" class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-bold border border-orange-200">
                         <i class="fa-solid fa-chair mr-1"></i> <span id="nav-table-id">--</span>
@@ -56,7 +53,6 @@
                     </button>
                 </div>
 
-                <!-- 系統切換區 -->
                 <div class="flex space-x-1 bg-gray-100 p-1 rounded-lg ml-auto">
                     <button onclick="switchView('customer')" id="btn-customer" class="px-2 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors">點餐</button>
                     <button onclick="switchView('kitchen')" id="btn-kitchen" class="px-2 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors">廚房</button>
@@ -167,14 +163,14 @@
                 salad: ['凱薩沙拉', '和風油醋'],
                 bread: ['香蒜麵包', '奶油餐包']
             },
-            // 新增 available 欄位做庫存管理
+            // 使用真實圖片網址 (Unsplash Source)
             menu: [
-                { id: 1, category: 'pasta', name: '奶油培根義大利麵', desc: '濃厚白醬配上煙燻培根', price: 220, icon: 'fa-wheat-awn', available: true },
-                { id: 2, category: 'pasta', name: '青醬蛤蠣義大利麵', desc: '新鮮羅勒與大顆蛤蠣', price: 240, icon: 'fa-leaf', available: true },
-                { id: 3, category: 'risotto', name: '松露野菇燉飯', desc: '進口松露油與綜合野菇', price: 280, icon: 'fa-bowl-rice', available: true },
-                { id: 4, category: 'risotto', name: '海鮮番茄燉飯', desc: '酸甜茄汁與綜合海鮮', price: 300, icon: 'fa-shrimp', available: true },
-                { id: 5, category: 'steak', name: '紐約客牛排', desc: '10oz 嚴選部位，多汁軟嫩', price: 580, icon: 'fa-drumstick-bite', available: true },
-                { id: 6, category: 'drink', name: '特調水果茶', desc: '新鮮水果切片', price: 120, icon: 'fa-glass-water', available: true }
+                { id: 1, category: 'pasta', name: '奶油培根義大利麵', desc: '濃厚白醬配上煙燻培根', price: 220, image: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=800&q=80', available: true },
+                { id: 2, category: 'pasta', name: '青醬蛤蠣義大利麵', desc: '新鮮羅勒與大顆蛤蠣', price: 240, image: 'https://images.unsplash.com/photo-1626844131082-256783844137?auto=format&fit=crop&w=800&q=80', available: true },
+                { id: 3, category: 'risotto', name: '松露野菇燉飯', desc: '進口松露油與綜合野菇', price: 280, image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=800&q=80', available: true },
+                { id: 4, category: 'risotto', name: '海鮮番茄燉飯', desc: '酸甜茄汁與綜合海鮮', price: 300, image: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=800&q=80', available: true },
+                { id: 5, category: 'steak', name: '紐約客牛排', desc: '10oz 嚴選部位，多汁軟嫩', price: 580, image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=800&q=80', available: true },
+                { id: 6, category: 'drink', name: '特調水果茶', desc: '新鮮水果切片', price: 120, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=800&q=80', available: true }
             ],
             categories: [
                 { id: 'all', name: '全部' },
@@ -192,16 +188,14 @@
             }
         };
 
-        // 從 LocalStorage 載入資料，若無則使用預設值
         function loadDB() {
             const saved = localStorage.getItem('gourmetOS_v2');
             if (saved) {
                 window.RestaurantDB = JSON.parse(saved);
-                // 恢復 UI 狀態預設值 (不需要存)
                 window.RestaurantDB.uiState = DEFAULT_DB.uiState;
             } else {
                 window.RestaurantDB = JSON.parse(JSON.stringify(DEFAULT_DB));
-                initFakeData(); // 只有第一次才寫入假資料
+                initFakeData();
             }
         }
 
@@ -209,56 +203,41 @@
             localStorage.setItem('gourmetOS_v2', JSON.stringify(window.RestaurantDB));
         }
 
-        // --- 2. 初始化 ---
-
         function initFakeData() {
             const now = Date.now();
             const db = window.RestaurantDB;
-            
-            // 預設幾筆資料展示功能
             db.tables['T2'].status = 'dining';
             db.tables['T2'].startTime = now - (76 * 60 * 1000); 
             db.tables['T2'].orderCount = 1;
             db.tables['T2'].totalAmount = 339;
             db.tables['T2'].serviceStatus = 'water';
-
             db.tables['T3'].status = 'dining';
             db.tables['T3'].startTime = now - (10 * 60 * 1000);
             db.tables['T3'].orderCount = 1;
             db.tables['T3'].totalAmount = 580;
-
             db.orders = [
-                { id: 'ORD-1001', tableId: 'T2', timestamp: now - (76 * 60 * 1000), status: 'served', items: [{ name: '奶油培根義大利麵', price: 220, comboName: '經典套餐', comboPrice: 119, subItems: ['可口可樂', '法式烤布蕾'], itemTotal: 339 }], total: 339 },
-                { id: 'ORD-1002', tableId: 'T3', timestamp: now - (10 * 60 * 1000), status: 'pending', items: [{ name: '紐約客牛排', price: 580, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 580 }], total: 580 }
+                { id: 'ORD-1001', tableId: 'T2', timestamp: now - (76 * 60 * 1000), status: 'served', items: [{ name: '奶油培根義大利麵', price: 220, comboName: '經典套餐', comboPrice: 119, subItems: ['可口可樂', '法式烤布蕾'], itemTotal: 339, basePrice: 220 }], total: 339 },
+                { id: 'ORD-1002', tableId: 'T3', timestamp: now - (10 * 60 * 1000), status: 'pending', items: [{ name: '紐約客牛排', price: 580, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 580, basePrice: 580 }], total: 580 }
             ];
-            
-            // 預設一個商品售完展示效果
-            db.menu[3].available = false; // 海鮮燉飯售完
+            // 預設海鮮燉飯售完
+            db.menu[3].available = false;
         }
 
         function initApp() {
             loadDB();
             renderAll();
-            
             setInterval(() => {
                 const db = window.RestaurantDB;
                 if (db.view === 'admin' && db.uiState.adminTab === 'tables') renderAdminView(document.getElementById('app-container'));
                 if (db.view === 'kitchen') renderKitchenView(document.getElementById('app-container'));
             }, 10000); 
-
-            if (window.RestaurantDB.view === 'customer' && !window.RestaurantDB.currentTableId) {
-                showTableSelectModal();
-            }
+            if (window.RestaurantDB.view === 'customer' && !window.RestaurantDB.currentTableId) showTableSelectModal();
         }
-
-        // --- 3. 核心視圖控制 ---
 
         function renderAll() {
             const db = window.RestaurantDB;
             const container = document.getElementById('app-container');
             const body = document.body;
-
-            // 導航按鈕樣式
             ['customer', 'kitchen', 'admin'].forEach(v => {
                 const btn = document.getElementById(`btn-${v}`);
                 if (v === db.view) {
@@ -269,8 +248,6 @@
                     btn.classList.add('text-gray-600', 'hover:bg-gray-200');
                 }
             });
-
-            // 視圖切換邏輯
             const navActions = document.getElementById('customer-nav-actions');
             if (db.view === 'customer') {
                 body.classList.remove('kitchen-mode');
@@ -289,21 +266,15 @@
                 navActions.classList.remove('flex');
                 renderAdminView(container);
             }
-            
-            saveDB(); // 每次渲染時順便存檔 (簡化邏輯)
+            saveDB();
         }
 
         function switchView(viewName) {
             window.RestaurantDB.view = viewName;
             saveDB();
-            if (viewName === 'customer' && !window.RestaurantDB.currentTableId) {
-                showTableSelectModal();
-            } else {
-                renderAll();
-            }
+            if (viewName === 'customer' && !window.RestaurantDB.currentTableId) showTableSelectModal();
+            else renderAll();
         }
-
-        // --- 4. 顧客視圖 ---
 
         function showTableSelectModal() {
             const grid = document.getElementById('table-select-grid');
@@ -322,9 +293,7 @@
             const db = window.RestaurantDB;
             db.currentTableId = tableId;
             document.getElementById('table-select-modal').classList.add('hidden');
-            if (db.tables[tableId].status === 'empty') {
-                db.tables[tableId].status = 'seated';
-            }
+            if (db.tables[tableId].status === 'empty') db.tables[tableId].status = 'seated';
             renderAll();
         }
 
@@ -332,7 +301,6 @@
             const db = window.RestaurantDB;
             if (!db.currentTableId) return;
             const table = db.tables[db.currentTableId];
-            
             if (table.serviceStatus === type) {
                 table.serviceStatus = null;
                 alert('已取消服務請求');
@@ -348,14 +316,10 @@
         function updateHistoryModal() {
             const db = window.RestaurantDB;
             if (!db.currentTableId) return;
-
             const myOrders = db.orders.filter(o => o.tableId === db.currentTableId).sort((a,b) => b.timestamp - a.timestamp);
             const container = document.getElementById('history-list');
             const totalEl = document.getElementById('history-total');
-
-            let html = '';
-            let grandTotal = 0;
-
+            let html = '', grandTotal = 0;
             if (myOrders.length === 0) {
                 html = '<div class="text-center text-gray-400 py-10">尚無點餐紀錄</div>';
             } else {
@@ -363,34 +327,34 @@
                     grandTotal += order.total;
                     const timeStr = new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     const isPending = order.status === 'pending';
-                    
                     html += `
                         <div class="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
                             <div class="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
                                 <span class="text-xs font-mono text-gray-500">#${order.id.split('-')[1]} • ${timeStr}</span>
-                                <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isPending ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}">
-                                    ${isPending ? '製作中' : '已上菜'}
-                                </span>
+                                <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isPending ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}">${isPending ? '製作中' : '已上菜'}</span>
                             </div>
-                            <div class="space-y-2">
+                            <div class="space-y-3">
                                 ${order.items.map(item => `
-                                    <div class="flex justify-between items-start text-sm">
-                                        <div>
-                                            <div class="text-gray-800 font-medium">${item.name}</div>
-                                            ${item.comboName !== '單點' ? `<div class="text-xs text-gray-500 pl-2 border-l-2 border-gray-300">${item.comboName}</div>` : ''}
+                                    <div class="flex flex-col text-sm border-b border-gray-50 last:border-0 pb-2 last:pb-0">
+                                        <div class="flex justify-between items-baseline">
+                                            <div class="text-gray-800 font-bold">${item.name}</div>
+                                            <div class="text-gray-600 font-mono">$${item.basePrice}</div>
                                         </div>
-                                        <div class="text-gray-700">$${item.itemTotal}</div>
+                                        ${item.comboPrice > 0 ? `
+                                            <div class="flex justify-between items-center text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded mt-1">
+                                                <span><i class="fa-solid fa-plus mr-1"></i>${item.comboName}</span>
+                                                <span>+$${item.comboPrice}</span>
+                                            </div>
+                                        ` : ''}
+                                        ${item.subItems.length > 0 ? `<div class="text-xs text-gray-400 mt-1 pl-1">${item.subItems.join(' / ')}</div>` : ''}
                                     </div>
                                 `).join('')}
                             </div>
-                            <div class="mt-2 pt-2 border-t border-gray-100 text-right text-sm font-bold text-gray-900">
-                                小計 $${order.total}
-                            </div>
+                            <div class="mt-2 pt-2 border-t border-gray-100 text-right text-sm font-bold text-gray-900">小計 $${order.total}</div>
                         </div>
                     `;
                 });
             }
-
             container.innerHTML = html;
             totalEl.innerText = `$${grandTotal}`;
         }
@@ -431,19 +395,24 @@
                 html += `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md ${isExpanded ? 'ring-2 ring-orange-100' : ''} ${isSoldOut ? 'item-sold-out relative' : ''}">
                         ${isSoldOut ? '<div class="badge-sold-out">SOLD OUT</div>' : ''}
-                        <div class="p-4 cursor-pointer" onclick="${isSoldOut ? '' : `toggleCard(${item.id})`}">
-                            <div class="flex justify-between items-start">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-16 h-16 bg-orange-50 rounded-lg flex items-center justify-center text-orange-500 text-2xl"><i class="fa-solid ${item.icon}"></i></div>
+                        <div class="cursor-pointer group" onclick="${isSoldOut ? '' : `toggleCard(${item.id})`}">
+                            <!-- 卡片上半部：圖片與資訊 -->
+                            <div class="flex p-4 gap-4">
+                                <div class="w-24 h-24 flex-shrink-0">
+                                    <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover rounded-lg shadow-sm group-hover:scale-105 transition-transform duration-300">
+                                </div>
+                                <div class="flex-1 flex flex-col justify-between">
                                     <div>
-                                        <h3 class="font-bold text-lg text-gray-800">${item.name}</h3>
-                                        <p class="text-xs text-gray-500 mt-1 line-clamp-1">${item.desc}</p>
+                                        <h3 class="font-bold text-lg text-gray-800 leading-tight">${item.name}</h3>
+                                        <p class="text-xs text-gray-500 mt-1 line-clamp-2">${item.desc}</p>
+                                    </div>
+                                    <div class="flex justify-between items-end mt-2">
+                                        <span class="font-bold text-xl text-gray-900">$${item.price}</span>
+                                        ${!isSoldOut ? `<span class="text-orange-500 text-sm font-medium hover:underline">選擇搭配 <i class="fa-solid fa-chevron-down ml-1"></i></span>` : ''}
                                     </div>
                                 </div>
-                                <span class="font-bold text-lg text-gray-900">$${item.price}</span>
                             </div>
                         </div>
-                        <!-- 修正點：移除 fade-in class 以防止閃爍 -->
                         <div class="${isExpanded ? 'block' : 'hidden'} bg-gray-50 border-t border-gray-100 p-4">
                             <div class="grid grid-cols-1 gap-2 mb-4">
                                 ${Object.values(db.combos).map(combo => `
@@ -458,8 +427,8 @@
                             </div>
                             ${renderSubOptions(item.id, tempState.comboType)}
                             <div class="mt-4 pt-3 border-t flex justify-end">
-                                <button onclick="addToCart(${item.id})" class="bg-gray-900 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-gray-800 transition shadow-lg flex items-center gap-2">
-                                    <i class="fa-solid fa-plus"></i> 加入
+                                <button onclick="addToCart(${item.id})" class="bg-gray-900 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-gray-800 transition shadow-lg flex items-center gap-2 transform active:scale-95">
+                                    <i class="fa-solid fa-plus"></i> 加入訂單
                                 </button>
                             </div>
                         </div>
@@ -467,7 +436,6 @@
                 `;
             });
             html += `</div>`;
-
             if (db.cart.length > 0) {
                 const total = db.cart.reduce((sum, i) => sum + i.itemTotal, 0);
                 html += `
@@ -485,7 +453,6 @@
             container.innerHTML = html;
         }
 
-        // 共用函式
         function filterCategory(id) { window.RestaurantDB.uiState.activeCategory = id; renderAll(); }
         function toggleCard(id) { 
             const db = window.RestaurantDB; 
@@ -535,7 +502,28 @@
             const con = document.getElementById('modal-order-items');
             if(db.cart.length===0) { con.innerHTML = ''; return; }
             let h = '', t=0;
-            db.cart.forEach(i => { t+=i.itemTotal; h+=`<div class="flex justify-between py-2 border-b border-gray-100 last:border-0"><div><div class="font-bold">${i.name}</div><div class="text-xs text-gray-500">${i.comboName} ${i.subItems.length>0?'/':''} ${i.subItems.join(' ')}</div></div><div class="font-bold">$${i.itemTotal}</div></div>`; });
+            db.cart.forEach(i => { 
+                t += i.itemTotal; 
+                h += `
+                    <div class="py-3 border-b border-gray-100 last:border-0">
+                        <div class="flex justify-between items-baseline">
+                            <div class="font-bold text-gray-800 text-lg">${i.name}</div>
+                            <div class="font-mono text-gray-600">$${i.basePrice}</div>
+                        </div>
+                        ${i.comboPrice > 0 ? `
+                            <div class="flex justify-between items-center text-sm text-orange-600 mt-1 bg-orange-50 px-2 py-1 rounded">
+                                <span><i class="fa-solid fa-plus text-xs mr-1"></i>${i.comboName}</span>
+                                <span>+$${i.comboPrice}</span>
+                            </div>
+                        ` : ''}
+                        ${i.subItems.length > 0 ? `
+                            <div class="text-xs text-gray-400 mt-1 pl-1">
+                                ${i.subItems.join(' / ')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `; 
+            });
             con.innerHTML = h; document.getElementById('modal-total-price').innerText = `$${t}`;
         }
 
@@ -544,7 +532,6 @@
             const tId = db.currentTableId;
             const table = db.tables[tId];
             const total = db.cart.reduce((s,i)=>s+i.itemTotal, 0);
-
             if (table.status !== 'dining') {
                 table.status = 'dining';
                 table.startTime = Date.now();
@@ -565,21 +552,16 @@
             switchView('customer');
         }
 
-        // --- 5. 廚房視圖 ---
-
         function renderKitchenView(container) {
             const db = window.RestaurantDB;
             const pending = db.orders.filter(o => o.status === 'pending').sort((a,b) => a.timestamp - b.timestamp);
             let html = `<div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
-            
             if (pending.length === 0) html += `<div class="col-span-full flex flex-col items-center justify-center text-gray-500 h-[60vh]"><i class="fa-solid fa-check-circle text-6xl mb-4 text-green-500"></i><p>目前沒有待處理訂單</p></div>`;
-
             pending.forEach(o => {
                 const mins = Math.floor((Date.now() - o.timestamp)/60000);
                 const urgent = mins >= 10;
                 const tableName = db.tables[o.tableId]?.name || 'Unknown';
                 const serviceReq = db.tables[o.tableId]?.serviceStatus;
-                
                 html += `
                     <div class="bg-gray-800 rounded-lg p-4 flex flex-col justify-between min-h-[300px] shadow-lg ${urgent ? 'kitchen-card-urgent' : 'border border-gray-700'} relative overflow-hidden">
                         ${serviceReq ? `<div class="absolute top-0 right-0 bg-yellow-500 text-black font-bold px-3 py-1 text-xs uppercase animate-pulse">Call: ${serviceReq}</div>` : ''}
@@ -610,14 +592,10 @@
             if(o) { o.status = 'served'; renderAll(); }
         }
 
-        // --- 6. 後台視圖 ---
-
         function renderAdminView(container) {
             const db = window.RestaurantDB;
             const tab = db.uiState.adminTab;
-            
             const serviceRequests = Object.values(db.tables).filter(t => t.serviceStatus);
-
             let html = `
                 <div class="bg-white border-b mb-6 sticky top-0 z-30">
                     <div class="max-w-4xl mx-auto flex">
@@ -628,7 +606,6 @@
                 </div>
                 <div class="max-w-4xl mx-auto p-4">
             `;
-            
             if (serviceRequests.length > 0) {
                 html += `
                     <div class="mb-6 bg-yellow-50 border border-yellow-200 p-4 rounded-lg flex items-center justify-between animate-pulse">
@@ -642,7 +619,6 @@
                     </div>
                 `;
             }
-
             if (tab === 'dashboard') {
                 const revenue = db.orders.filter(o => o.status === 'served').reduce((s,o)=>s+o.total, 0);
                 const count = db.orders.filter(o => o.status === 'served').length;
@@ -661,24 +637,19 @@
             } else if (tab === 'tables') {
                 const now = Date.now();
                 const limit = 90 * 60 * 1000;
-
                 html += `<div class="grid grid-cols-2 md:grid-cols-3 gap-6">`;
-                
                 Object.values(db.tables).forEach(t => {
                     let timerHtml = '<span class="text-gray-400">未計時</span>';
                     let statusClass = 'table-empty';
                     let timeLeftMin = 0;
                     let serviceIcon = '';
-
                     if (t.serviceStatus === 'water') serviceIcon = '<div class="absolute -top-2 -right-2 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg service-calling"><i class="fa-solid fa-glass-water"></i></div>';
                     if (t.serviceStatus === 'staff') serviceIcon = '<div class="absolute -top-2 -right-2 w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center shadow-lg service-calling"><i class="fa-solid fa-bell-concierge"></i></div>';
                     if (t.serviceStatus === 'checkout') serviceIcon = '<div class="absolute -top-2 -right-2 w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg service-calling"><i class="fa-solid fa-wallet"></i></div>';
-
                     if (t.status === 'dining' && t.startTime) {
                         const elapsed = now - t.startTime;
                         const remaining = limit - elapsed;
                         timeLeftMin = Math.ceil(remaining / 60000);
-                        
                         if (remaining <= 0) {
                             statusClass = 'table-urgent';
                             timerHtml = `<span class="text-red-600 font-bold text-xl"><i class="fa-solid fa-triangle-exclamation"></i> 超時 ${Math.abs(timeLeftMin)} 分</span>`;
@@ -693,7 +664,6 @@
                         statusClass = 'table-seated';
                         timerHtml = '<span class="text-blue-500">點餐中...</span>';
                     }
-
                     html += `
                         <div class="${statusClass} rounded-xl p-4 flex flex-col justify-between h-40 shadow-sm relative transition-all group">
                             ${serviceIcon}
@@ -704,20 +674,17 @@
                                     ${t.serviceStatus ? `<button onclick="resolveService('${t.id}')" class="text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-700 shadow">完成服務</button>` : ''}
                                 </div>
                             </div>
-                            
                             <div class="flex flex-col items-center justify-center flex-1">
                                 ${timerHtml}
                                 ${t.status !== 'empty' ? `<p class="text-xs mt-1 font-medium">累積金額: $${t.totalAmount}</p>` : ''}
                                 ${t.status !== 'empty' ? `<p class="text-xs text-gray-500">${t.orderCount} 張單</p>` : ''}
                             </div>
-                            
                             ${t.status === 'empty' ? '<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black bg-opacity-5 transition cursor-pointer" onclick="openTable(\''+t.id+'\')"><span class="bg-white px-3 py-1 rounded shadow text-sm font-bold">手動開桌</span></div>' : ''}
                         </div>
                     `;
                 });
                 html += `</div>`;
             } else if (tab === 'menu') {
-                // 餐點庫存管理介面
                 html += `
                     <div class="bg-white rounded-xl shadow overflow-hidden">
                         <table class="min-w-full divide-y divide-gray-200">
@@ -731,7 +698,10 @@
                             <tbody class="bg-white divide-y divide-gray-200">
                                 ${db.menu.map(item => `
                                     <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.name}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center gap-3">
+                                            <img src="${item.image}" class="w-10 h-10 rounded object-cover shadow-sm">
+                                            ${item.name}
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$${item.price}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                                             <button onclick="toggleItemAvailability(${item.id})" 
@@ -746,13 +716,11 @@
                     </div>
                 `;
             }
-
             html += `</div>`;
             container.innerHTML = html;
         }
 
         function setAdminTab(t) { window.RestaurantDB.uiState.adminTab = t; renderAll(); }
-        
         function toggleItemAvailability(itemId) {
             const item = window.RestaurantDB.menu.find(m => m.id === itemId);
             if (item) {
@@ -760,26 +728,22 @@
                 renderAll();
             }
         }
-
         function clearTable(tid) {
             if(!confirm('確認客人已買單離場，要清空桌位嗎？')) return;
             const t = window.RestaurantDB.tables[tid];
             t.status = 'empty'; t.startTime = null; t.orderCount = 0; t.totalAmount = 0; t.serviceStatus = null;
             renderAll();
         }
-
         function openTable(tid) {
             const t = window.RestaurantDB.tables[tid];
             t.status = 'seated';
             renderAll();
         }
-
         function resolveService(tid) {
             const t = window.RestaurantDB.tables[tid];
             t.serviceStatus = null;
             renderAll();
         }
-
         initApp();
     </script>
 </body>
