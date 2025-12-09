@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gourmet OS Pro - 智慧餐廳系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 動畫僅保留 Modal 的淡入，移除選單區域的頻繁動畫 */
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .kitchen-mode { background-color: #1a202c; color: #e2e8f0; }
+        .kitchen-card-urgent { border: 2px solid #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+        
+        /* 桌況顏色 */
+        .table-empty { background-color: #f3f4f6; border: 2px dashed #d1d5db; color: #9ca3af; }
+        .table-seated { background-color: #dbeafe; border: 2px solid #3b82f6; color: #1e40af; }
+        .table-dining { background-color: #d1fae5; border: 2px solid #10b981; color: #065f46; }
+        .table-urgent { background-color: #fee2e2; border: 2px solid #ef4444; color: #991b1b; animation: pulseBorder 2s infinite; }
+        
+        /* 售完樣式 */
+        .item-sold-out { opacity: 0.6; pointer-events: none; filter: grayscale(100%); }
+        .badge-sold-out { position: absolute; top: 10px; right: 10px; background: #ef4444; color: white; font-weight: bold; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; transform: rotate(15deg); z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+        /* 服務呼叫閃爍 */
+        .service-calling { animation: servicePulse 1s infinite alternate; }
+        @keyframes servicePulse { from { box-shadow: 0 0 5px #eab308; } to { box-shadow: 0 0 20px #eab308; border-color: #eab308; } }
+        @keyframes pulseBorder { 0% { border-color: #ef4444; } 50% { border-color: #f87171; } 100% { border-color: #ef4444; } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- 頂部導航 -->
+    <nav class="bg-white shadow-md z-50 flex-none">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-utensils text-orange-500 text-2xl"></i>
+                    <span class="font-bold text-xl tracking-wider hidden sm:inline">Gourmet<span class="text-orange-500">OS</span> Pro</span>
+                </div>
+                
+                <!-- 顧客端功能區 -->
+                <div id="customer-nav-actions" class="hidden items-center gap-3">
+                    <div id="current-table-display" class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-bold border border-orange-200">
+                        <i class="fa-solid fa-chair mr-1"></i> <span id="nav-table-id">--</span>
+                    </div>
+                    <button onclick="toggleModal('history-modal', true)" class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-700 transition flex items-center gap-2">
+                        <i class="fa-solid fa-receipt"></i> <span class="hidden sm:inline">我的帳單</span>
+                    </button>
+                </div>
+
+                <!-- 系統切換區 -->
+                <div class="flex space-x-1 bg-gray-100 p-1 rounded-lg ml-auto">
+                    <button onclick="switchView('customer')" id="btn-customer" class="px-2 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors">點餐</button>
+                    <button onclick="switchView('kitchen')" id="btn-kitchen" class="px-2 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors">廚房</button>
+                    <button onclick="switchView('admin')" id="btn-admin" class="px-2 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors">後台</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主內容區域 -->
+    <main id="app-container" class="flex-1 overflow-y-auto relative scroll-smooth bg-gray-50">
+        <!-- 內容動態渲染 -->
+    </main>
+
+    <!-- 歷史訂單與服務模態框 -->
+    <div id="history-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[65] hidden flex items-end sm:items-center justify-center fade-in">
+        <div class="bg-white w-full sm:w-[480px] sm:rounded-xl rounded-t-xl p-0 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-clipboard-list mr-2"></i>已點餐點明細</h3>
+                <button onclick="toggleModal('history-modal', false)" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <div class="bg-orange-50 p-4 border-b border-orange-100">
+                <h4 class="text-xs font-bold text-orange-800 mb-2 uppercase tracking-wide">呼叫服務 (Service)</h4>
+                <div class="grid grid-cols-3 gap-3">
+                    <button onclick="callService('water')" class="flex flex-col items-center justify-center bg-white p-3 rounded-lg border border-orange-200 shadow-sm hover:bg-orange-100 transition text-blue-500">
+                        <i class="fa-solid fa-glass-water text-xl mb-1"></i>
+                        <span class="text-xs font-bold text-gray-700">加水</span>
+                    </button>
+                    <button onclick="callService('staff')" class="flex flex-col items-center justify-center bg-white p-3 rounded-lg border border-orange-200 shadow-sm hover:bg-orange-100 transition text-purple-500">
+                        <i class="fa-solid fa-bell-concierge text-xl mb-1"></i>
+                        <span class="text-xs font-bold text-gray-700">找店員</span>
+                    </button>
+                    <button onclick="callService('checkout')" class="flex flex-col items-center justify-center bg-white p-3 rounded-lg border border-orange-200 shadow-sm hover:bg-orange-100 transition text-green-600">
+                        <i class="fa-solid fa-wallet text-xl mb-1"></i>
+                        <span class="text-xs font-bold text-gray-700">我要結帳</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"></div>
+
+            <div class="p-4 bg-white border-t border-gray-200">
+                <div class="flex justify-between items-end">
+                    <span class="text-gray-500 text-sm">目前累計金額</span>
+                    <span id="history-total" class="text-2xl font-bold text-gray-900">$0</span>
+                </div>
+                <p class="text-xs text-right text-gray-400 mt-1">*尚未包含 10% 服務費</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 購物車結帳模態框 -->
+    <div id="checkout-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden flex items-end sm:items-center justify-center fade-in">
+        <div class="bg-white w-full sm:w-96 sm:rounded-xl rounded-t-xl p-6 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-xl font-bold">送出訂單</h3>
+                <button onclick="toggleModal('checkout-modal', false)" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            <div id="modal-order-items" class="flex-1 overflow-y-auto space-y-3 mb-4 pr-2"></div>
+            <div class="border-t pt-4">
+                <div class="flex justify-between items-end mb-4">
+                    <span class="text-gray-600">本單金額</span>
+                    <span id="modal-total-price" class="text-2xl font-bold text-orange-600">$0</span>
+                </div>
+                <button onclick="processPayment()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow transition transform active:scale-95">
+                    確認點餐
+                </button>
+                <p class="text-xs text-center text-gray-400 mt-2">點餐後，桌位計時器將自動開始</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 桌號選擇模態框 -->
+    <div id="table-select-modal" class="fixed inset-0 bg-black bg-opacity-80 z-[70] hidden flex items-center justify-center fade-in">
+        <div class="bg-white w-80 rounded-xl p-6 shadow-2xl text-center">
+            <div class="mb-4 text-orange-500 text-4xl"><i class="fa-solid fa-qrcode"></i></div>
+            <h3 class="text-xl font-bold mb-2">請模擬掃描桌號</h3>
+            <p class="text-sm text-gray-500 mb-6">請選擇您入座的桌號以開始點餐</p>
+            <div class="grid grid-cols-3 gap-3" id="table-select-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. 資料結構與持久化 ---
+        
+        const DEFAULT_DB = {
+            view: 'customer',
+            currentTableId: null,
+            cart: [],
+            tables: {
+                'T1': { id: 'T1', name: '1桌', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
+                'T2': { id: 'T2', name: '2桌', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
+                'T3': { id: 'T3', name: '3桌', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
+                'T4': { id: 'T4', name: '5桌', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
+                'T5': { id: 'T5', name: '6桌', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
+                'T6': { id: 'T6', name: 'VIP', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 }
+            },
+            combos: {
+                none: { id: 'none', name: '單點', price: 0, needs: [] },
+                setA: { id: 'setA', name: '經典套餐', price: 119, needs: ['drink', 'dessert'] },
+                setB: { id: 'setB', name: '豪華全餐', price: 199, needs: ['drink', 'dessert', 'soup', 'salad', 'bread'] }
+            },
+            optionPool: {
+                drink: ['可口可樂', '日月潭紅茶', '雪碧'],
+                dessert: ['法式烤布蕾', '提拉米蘇', '奶酪'],
+                soup: ['玉米濃湯', '番茄蔬菜湯'],
+                salad: ['凱薩沙拉', '和風油醋'],
+                bread: ['香蒜麵包', '奶油餐包']
+            },
+            // 新增 available 欄位做庫存管理
+            menu: [
+                { id: 1, category: 'pasta', name: '奶油培根義大利麵', desc: '濃厚白醬配上煙燻培根', price: 220, icon: 'fa-wheat-awn', available: true },
+                { id: 2, category: 'pasta', name: '青醬蛤蠣義大利麵', desc: '新鮮羅勒與大顆蛤蠣', price: 240, icon: 'fa-leaf', available: true },
+                { id: 3, category: 'risotto', name: '松露野菇燉飯', desc: '進口松露油與綜合野菇', price: 280, icon: 'fa-bowl-rice', available: true },
+                { id: 4, category: 'risotto', name: '海鮮番茄燉飯', desc: '酸甜茄汁與綜合海鮮', price: 300, icon: 'fa-shrimp', available: true },
+                { id: 5, category: 'steak', name: '紐約客牛排', desc: '10oz 嚴選部位，多汁軟嫩', price: 580, icon: 'fa-drumstick-bite', available: true },
+                { id: 6, category: 'drink', name: '特調水果茶', desc: '新鮮水果切片', price: 120, icon: 'fa-glass-water', available: true }
+            ],
+            categories: [
+                { id: 'all', name: '全部' },
+                { id: 'pasta', name: '義大利麵' },
+                { id: 'risotto', name: '燉飯' },
+                { id: 'steak', name: '排餐' },
+                { id: 'drink', name: '飲品' }
+            ],
+            orders: [],
+            uiState: {
+                activeCategory: 'all',
+                expandedCardId: null,
+                tempSelections: {},
+                adminTab: 'tables' 
+            }
+        };
+
+        // 從 LocalStorage 載入資料，若無則使用預設值
+        function loadDB() {
+            const saved = localStorage.getItem('gourmetOS_v2');
+            if (saved) {
+                window.RestaurantDB = JSON.parse(saved);
+                // 恢復 UI 狀態預設值 (不需要存)
+                window.RestaurantDB.uiState = DEFAULT_DB.uiState;
+            } else {
+                window.RestaurantDB = JSON.parse(JSON.stringify(DEFAULT_DB));
+                initFakeData(); // 只有第一次才寫入假資料
+            }
+        }
+
+        function saveDB() {
+            localStorage.setItem('gourmetOS_v2', JSON.stringify(window.RestaurantDB));
+        }
+
+        // --- 2. 初始化 ---
+
+        function initFakeData() {
+            const now = Date.now();
+            const db = window.RestaurantDB;
+            
+            // 預設幾筆資料展示功能
+            db.tables['T2'].status = 'dining';
+            db.tables['T2'].startTime = now - (76 * 60 * 1000); 
+            db.tables['T2'].orderCount = 1;
+            db.tables['T2'].totalAmount = 339;
+            db.tables['T2'].serviceStatus = 'water';
+
+            db.tables['T3'].status = 'dining';
+            db.tables['T3'].startTime = now - (10 * 60 * 1000);
+            db.tables['T3'].orderCount = 1;
+            db.tables['T3'].totalAmount = 580;
+
+            db.orders = [
+                { id: 'ORD-1001', tableId: 'T2', timestamp: now - (76 * 60 * 1000), status: 'served', items: [{ name: '奶油培根義大利麵', price: 220, comboName: '經典套餐', comboPrice: 119, subItems: ['可口可樂', '法式烤布蕾'], itemTotal: 339 }], total: 339 },
+                { id: 'ORD-1002', tableId: 'T3', timestamp: now - (10 * 60 * 1000), status: 'pending', items: [{ name: '紐約客牛排', price: 580, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 580 }], total: 580 }
+            ];
+            
+            // 預設一個商品售完展示效果
+            db.menu[3].available = false; // 海鮮燉飯售完
+        }
+
+        function initApp() {
+            loadDB();
+            renderAll();
+            
+            setInterval(() => {
+                const db = window.RestaurantDB;
+                if (db.view === 'admin' && db.uiState.adminTab === 'tables') renderAdminView(document.getElementById('app-container'));
+                if (db.view === 'kitchen') renderKitchenView(document.getElementById('app-container'));
+            }, 10000); 
+
+            if (window.RestaurantDB.view === 'customer' && !window.RestaurantDB.currentTableId) {
+                showTableSelectModal();
+            }
+        }
+
+        // --- 3. 核心視圖控制 ---
+
+        function renderAll() {
+            const db = window.RestaurantDB;
+            const container = document.getElementById('app-container');
+            const body = document.body;
+
+            // 導航按鈕樣式
+            ['customer', 'kitchen', 'admin'].forEach(v => {
+                const btn = document.getElementById(`btn-${v}`);
+                if (v === db.view) {
+                    btn.classList.add('bg-orange-500', 'text-white', 'shadow');
+                    btn.classList.remove('text-gray-600', 'hover:bg-gray-200');
+                } else {
+                    btn.classList.remove('bg-orange-500', 'text-white', 'shadow');
+                    btn.classList.add('text-gray-600', 'hover:bg-gray-200');
+                }
+            });
+
+            // 視圖切換邏輯
+            const navActions = document.getElementById('customer-nav-actions');
+            if (db.view === 'customer') {
+                body.classList.remove('kitchen-mode');
+                navActions.classList.remove('hidden');
+                navActions.classList.add('flex');
+                document.getElementById('nav-table-id').innerText = db.currentTableId ? db.tables[db.currentTableId].name : '--';
+                renderCustomerView(container);
+            } else if (db.view === 'kitchen') {
+                body.classList.add('kitchen-mode');
+                navActions.classList.add('hidden');
+                navActions.classList.remove('flex');
+                renderKitchenView(container);
+            } else if (db.view === 'admin') {
+                body.classList.remove('kitchen-mode');
+                navActions.classList.add('hidden');
+                navActions.classList.remove('flex');
+                renderAdminView(container);
+            }
+            
+            saveDB(); // 每次渲染時順便存檔 (簡化邏輯)
+        }
+
+        function switchView(viewName) {
+            window.RestaurantDB.view = viewName;
+            saveDB();
+            if (viewName === 'customer' && !window.RestaurantDB.currentTableId) {
+                showTableSelectModal();
+            } else {
+                renderAll();
+            }
+        }
+
+        // --- 4. 顧客視圖 ---
+
+        function showTableSelectModal() {
+            const grid = document.getElementById('table-select-grid');
+            const db = window.RestaurantDB;
+            grid.innerHTML = Object.values(db.tables).map(t => `
+                <button onclick="selectTable('${t.id}')" class="p-3 border rounded-lg hover:bg-orange-50 hover:border-orange-500 transition flex flex-col items-center gap-1 bg-white relative overflow-hidden">
+                    <span class="font-bold text-lg">${t.name}</span>
+                    <span class="text-xs ${t.status === 'empty' ? 'text-green-500' : 'text-blue-500'}">${t.status === 'empty' ? '空桌' : '用餐中'}</span>
+                    ${t.status !== 'empty' ? '<div class="absolute top-0 right-0 bg-blue-500 text-white text-[10px] px-1 rounded-bl">加入</div>' : ''}
+                </button>
+            `).join('');
+            document.getElementById('table-select-modal').classList.remove('hidden');
+        }
+
+        function selectTable(tableId) {
+            const db = window.RestaurantDB;
+            db.currentTableId = tableId;
+            document.getElementById('table-select-modal').classList.add('hidden');
+            if (db.tables[tableId].status === 'empty') {
+                db.tables[tableId].status = 'seated';
+            }
+            renderAll();
+        }
+
+        function callService(type) {
+            const db = window.RestaurantDB;
+            if (!db.currentTableId) return;
+            const table = db.tables[db.currentTableId];
+            
+            if (table.serviceStatus === type) {
+                table.serviceStatus = null;
+                alert('已取消服務請求');
+            } else {
+                table.serviceStatus = type;
+                let msg = type === 'water' ? '加水' : (type === 'staff' ? '找店員' : '結帳');
+                alert(`已送出「${msg}」請求，服務人員將盡快為您服務。`);
+            }
+            updateHistoryModal();
+            saveDB();
+        }
+
+        function updateHistoryModal() {
+            const db = window.RestaurantDB;
+            if (!db.currentTableId) return;
+
+            const myOrders = db.orders.filter(o => o.tableId === db.currentTableId).sort((a,b) => b.timestamp - a.timestamp);
+            const container = document.getElementById('history-list');
+            const totalEl = document.getElementById('history-total');
+
+            let html = '';
+            let grandTotal = 0;
+
+            if (myOrders.length === 0) {
+                html = '<div class="text-center text-gray-400 py-10">尚無點餐紀錄</div>';
+            } else {
+                myOrders.forEach(order => {
+                    grandTotal += order.total;
+                    const timeStr = new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const isPending = order.status === 'pending';
+                    
+                    html += `
+                        <div class="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
+                            <div class="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
+                                <span class="text-xs font-mono text-gray-500">#${order.id.split('-')[1]} • ${timeStr}</span>
+                                <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isPending ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}">
+                                    ${isPending ? '製作中' : '已上菜'}
+                                </span>
+                            </div>
+                            <div class="space-y-2">
+                                ${order.items.map(item => `
+                                    <div class="flex justify-between items-start text-sm">
+                                        <div>
+                                            <div class="text-gray-800 font-medium">${item.name}</div>
+                                            ${item.comboName !== '單點' ? `<div class="text-xs text-gray-500 pl-2 border-l-2 border-gray-300">${item.comboName}</div>` : ''}
+                                        </div>
+                                        <div class="text-gray-700">$${item.itemTotal}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="mt-2 pt-2 border-t border-gray-100 text-right text-sm font-bold text-gray-900">
+                                小計 $${order.total}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            container.innerHTML = html;
+            totalEl.innerText = `$${grandTotal}`;
+        }
+
+        function toggleModal(id, show) {
+            const el = document.getElementById(id);
+            if(show) { 
+                el.classList.remove('hidden'); 
+                if(id === 'checkout-modal') updateCheckoutModal();
+                if(id === 'history-modal') updateHistoryModal();
+            } else { 
+                el.classList.add('hidden'); 
+            }
+        }
+
+        function renderCustomerView(container) {
+            const db = window.RestaurantDB;
+            let html = `
+                <div class="sticky top-0 bg-white shadow-sm z-40 py-3 overflow-x-auto hide-scrollbar whitespace-nowrap px-4 border-b">
+                    <div class="flex space-x-2">
+                        ${db.categories.map(cat => `
+                            <button onclick="filterCategory('${cat.id}')" 
+                                class="px-4 py-1.5 rounded-full text-sm font-medium transition-all ${db.uiState.activeCategory === cat.id ? 'bg-orange-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">
+                                ${cat.name}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            const filteredMenu = db.uiState.activeCategory === 'all' ? db.menu : db.menu.filter(m => m.category === db.uiState.activeCategory);
+            
+            html += `<div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">`;
+            filteredMenu.forEach(item => {
+                const tempState = db.uiState.tempSelections[item.id] || { comboType: 'none', choices: {} };
+                const isExpanded = db.uiState.expandedCardId === item.id;
+                const isSoldOut = !item.available;
+                
+                html += `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md ${isExpanded ? 'ring-2 ring-orange-100' : ''} ${isSoldOut ? 'item-sold-out relative' : ''}">
+                        ${isSoldOut ? '<div class="badge-sold-out">SOLD OUT</div>' : ''}
+                        <div class="p-4 cursor-pointer" onclick="${isSoldOut ? '' : `toggleCard(${item.id})`}">
+                            <div class="flex justify-between items-start">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-16 h-16 bg-orange-50 rounded-lg flex items-center justify-center text-orange-500 text-2xl"><i class="fa-solid ${item.icon}"></i></div>
+                                    <div>
+                                        <h3 class="font-bold text-lg text-gray-800">${item.name}</h3>
+                                        <p class="text-xs text-gray-500 mt-1 line-clamp-1">${item.desc}</p>
+                                    </div>
+                                </div>
+                                <span class="font-bold text-lg text-gray-900">$${item.price}</span>
+                            </div>
+                        </div>
+                        <!-- 修正點：移除 fade-in class 以防止閃爍 -->
+                        <div class="${isExpanded ? 'block' : 'hidden'} bg-gray-50 border-t border-gray-100 p-4">
+                            <div class="grid grid-cols-1 gap-2 mb-4">
+                                ${Object.values(db.combos).map(combo => `
+                                    <label class="flex items-center justify-between p-3 border rounded-lg cursor-pointer bg-white ${tempState.comboType === combo.id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-200'}">
+                                        <div class="flex items-center gap-3">
+                                            <input type="radio" name="combo-${item.id}" value="${combo.id}" ${tempState.comboType === combo.id ? 'checked' : ''} onchange="selectCombo(${item.id}, '${combo.id}')" class="text-orange-500 focus:ring-orange-500 w-4 h-4">
+                                            <span class="text-sm font-medium">${combo.name}</span>
+                                        </div>
+                                        <span class="text-sm font-bold ${combo.price > 0 ? 'text-orange-600' : 'text-gray-400'}">${combo.price > 0 ? `+$${combo.price}` : '+$0'}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                            ${renderSubOptions(item.id, tempState.comboType)}
+                            <div class="mt-4 pt-3 border-t flex justify-end">
+                                <button onclick="addToCart(${item.id})" class="bg-gray-900 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-gray-800 transition shadow-lg flex items-center gap-2">
+                                    <i class="fa-solid fa-plus"></i> 加入
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+
+            if (db.cart.length > 0) {
+                const total = db.cart.reduce((sum, i) => sum + i.itemTotal, 0);
+                html += `
+                    <div class="fixed bottom-4 left-4 right-4 z-40 max-w-7xl mx-auto fade-in">
+                        <div class="bg-gray-900 text-white rounded-xl shadow-2xl p-4 flex justify-between items-center cursor-pointer hover:bg-gray-800 transition" onclick="toggleModal('checkout-modal', true)">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-orange-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow">${db.cart.length}</div>
+                                <div class="flex flex-col"><span class="text-xs text-gray-400">小計</span><span class="font-bold text-lg">$${total}</span></div>
+                            </div>
+                            <div class="flex items-center gap-2 font-bold text-sm bg-white text-gray-900 px-4 py-2 rounded-lg">送出訂單 <i class="fa-solid fa-chevron-right text-xs"></i></div>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        // 共用函式
+        function filterCategory(id) { window.RestaurantDB.uiState.activeCategory = id; renderAll(); }
+        function toggleCard(id) { 
+            const db = window.RestaurantDB; 
+            db.uiState.expandedCardId = db.uiState.expandedCardId === id ? null : id;
+            if (db.uiState.expandedCardId && !db.uiState.tempSelections[id]) db.uiState.tempSelections[id] = { comboType: 'none', choices: {} };
+            renderAll(); 
+        }
+        function selectCombo(id, cid) {
+            const db = window.RestaurantDB;
+            const needs = db.combos[cid].needs;
+            const defaults = {};
+            needs.forEach(c => defaults[c] = db.optionPool[c][0]);
+            db.uiState.tempSelections[id] = { comboType: cid, choices: defaults };
+            renderAll();
+        }
+        function renderSubOptions(itemId, comboId) {
+            const db = window.RestaurantDB;
+            const combo = db.combos[comboId];
+            if (!combo || combo.needs.length === 0) return '';
+            const choices = db.uiState.tempSelections[itemId]?.choices || {};
+            const names = { drink: '飲品', dessert: '甜點', soup: '湯品', salad: '沙拉', bread: '麵包' };
+            return `<div class="space-y-4">` + combo.needs.map(cat => `
+                <div><p class="text-xs text-gray-500 font-bold mb-2 uppercase">${names[cat]}</p>
+                <div class="grid grid-cols-2 gap-2">${db.optionPool[cat].map(opt => `
+                    <label class="cursor-pointer"><input type="radio" name="opt-${itemId}-${cat}" value="${opt}" class="peer sr-only" ${choices[cat]===opt?'checked':''} onchange="selectSubOption(${itemId}, '${cat}', '${opt}')">
+                    <div class="text-center py-2 px-1 text-xs border rounded peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 bg-white text-gray-600 border-gray-200 hover:bg-gray-50">${opt}</div></label>
+                `).join('')}</div></div>`).join('') + `</div>`;
+        }
+        function selectSubOption(id, cat, val) { 
+            window.RestaurantDB.uiState.tempSelections[id].choices[cat] = val;
+            saveDB();
+        }
+        
+        function addToCart(id) {
+            const db = window.RestaurantDB;
+            const item = db.menu.find(m => m.id === id);
+            const sel = db.uiState.tempSelections[id];
+            if(!sel) return;
+            const combo = db.combos[sel.comboType];
+            db.cart.push({ id: Date.now(), name: item.name, basePrice: item.price, comboName: combo.name, comboPrice: combo.price, itemTotal: item.price + combo.price, subItems: Object.values(sel.choices) });
+            db.uiState.expandedCardId = null;
+            renderAll();
+        }
+
+        function updateCheckoutModal() {
+            const db = window.RestaurantDB;
+            const con = document.getElementById('modal-order-items');
+            if(db.cart.length===0) { con.innerHTML = ''; return; }
+            let h = '', t=0;
+            db.cart.forEach(i => { t+=i.itemTotal; h+=`<div class="flex justify-between py-2 border-b border-gray-100 last:border-0"><div><div class="font-bold">${i.name}</div><div class="text-xs text-gray-500">${i.comboName} ${i.subItems.length>0?'/':''} ${i.subItems.join(' ')}</div></div><div class="font-bold">$${i.itemTotal}</div></div>`; });
+            con.innerHTML = h; document.getElementById('modal-total-price').innerText = `$${t}`;
+        }
+
+        function processPayment() {
+            const db = window.RestaurantDB;
+            const tId = db.currentTableId;
+            const table = db.tables[tId];
+            const total = db.cart.reduce((s,i)=>s+i.itemTotal, 0);
+
+            if (table.status !== 'dining') {
+                table.status = 'dining';
+                table.startTime = Date.now();
+            }
+            table.orderCount += 1;
+            table.totalAmount += total;
+            db.orders.push({
+                id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
+                tableId: tId,
+                timestamp: Date.now(),
+                status: 'pending',
+                items: JSON.parse(JSON.stringify(db.cart)),
+                total: total
+            });
+            db.cart = [];
+            toggleModal('checkout-modal', false);
+            alert(`點餐成功！\n桌號: ${table.name}\n訂單已送出。`);
+            switchView('customer');
+        }
+
+        // --- 5. 廚房視圖 ---
+
+        function renderKitchenView(container) {
+            const db = window.RestaurantDB;
+            const pending = db.orders.filter(o => o.status === 'pending').sort((a,b) => a.timestamp - b.timestamp);
+            let html = `<div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
+            
+            if (pending.length === 0) html += `<div class="col-span-full flex flex-col items-center justify-center text-gray-500 h-[60vh]"><i class="fa-solid fa-check-circle text-6xl mb-4 text-green-500"></i><p>目前沒有待處理訂單</p></div>`;
+
+            pending.forEach(o => {
+                const mins = Math.floor((Date.now() - o.timestamp)/60000);
+                const urgent = mins >= 10;
+                const tableName = db.tables[o.tableId]?.name || 'Unknown';
+                const serviceReq = db.tables[o.tableId]?.serviceStatus;
+                
+                html += `
+                    <div class="bg-gray-800 rounded-lg p-4 flex flex-col justify-between min-h-[300px] shadow-lg ${urgent ? 'kitchen-card-urgent' : 'border border-gray-700'} relative overflow-hidden">
+                        ${serviceReq ? `<div class="absolute top-0 right-0 bg-yellow-500 text-black font-bold px-3 py-1 text-xs uppercase animate-pulse">Call: ${serviceReq}</div>` : ''}
+                        <div>
+                            <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-700">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="bg-orange-600 text-white px-2 py-0.5 rounded text-sm font-bold">${tableName}</span>
+                                        <h3 class="text-xl font-bold text-white">#${o.id.split('-')[1]}</h3>
+                                    </div>
+                                    <p class="text-xs text-gray-400 mt-1">Total: $${o.total}</p>
+                                </div>
+                                <span class="text-2xl font-mono font-bold ${urgent ? 'text-red-500 animate-pulse' : 'text-green-400'}">${mins}m</span>
+                            </div>
+                            <div class="space-y-4">${o.items.map(i => `<div class="text-sm"><div class="text-white font-bold text-lg">${i.name}</div>${i.comboName!=='單點'?`<div class="ml-2 pl-2 border-l-2 border-gray-600 mt-1"><div class="text-orange-400 text-xs font-bold">[${i.comboName}]</div><div class="text-gray-300 text-xs">${i.subItems.join(', ')}</div></div>`:''}</div>`).join('')}</div>
+                        </div>
+                        <button onclick="completeOrder('${o.id}')" class="mt-6 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded text-lg transition">DONE</button>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function completeOrder(id) {
+            const db = window.RestaurantDB;
+            const o = db.orders.find(x => x.id === id);
+            if(o) { o.status = 'served'; renderAll(); }
+        }
+
+        // --- 6. 後台視圖 ---
+
+        function renderAdminView(container) {
+            const db = window.RestaurantDB;
+            const tab = db.uiState.adminTab;
+            
+            const serviceRequests = Object.values(db.tables).filter(t => t.serviceStatus);
+
+            let html = `
+                <div class="bg-white border-b mb-6 sticky top-0 z-30">
+                    <div class="max-w-4xl mx-auto flex">
+                        <button onclick="setAdminTab('tables')" class="flex-1 py-4 text-sm font-bold border-b-2 ${tab==='tables'?'border-orange-500 text-orange-600':'border-transparent text-gray-500 hover:text-gray-700'}">桌況管理</button>
+                        <button onclick="setAdminTab('menu')" class="flex-1 py-4 text-sm font-bold border-b-2 ${tab==='menu'?'border-orange-500 text-orange-600':'border-transparent text-gray-500 hover:text-gray-700'}">餐點庫存</button>
+                        <button onclick="setAdminTab('dashboard')" class="flex-1 py-4 text-sm font-bold border-b-2 ${tab==='dashboard'?'border-orange-500 text-orange-600':'border-transparent text-gray-500 hover:text-gray-700'}">營收報表</button>
+                    </div>
+                </div>
+                <div class="max-w-4xl mx-auto p-4">
+            `;
+            
+            if (serviceRequests.length > 0) {
+                html += `
+                    <div class="mb-6 bg-yellow-50 border border-yellow-200 p-4 rounded-lg flex items-center justify-between animate-pulse">
+                        <div class="flex items-center gap-3 text-yellow-800">
+                            <i class="fa-solid fa-bell text-xl"></i>
+                            <span class="font-bold">有 ${serviceRequests.length} 桌正在呼叫服務！</span>
+                        </div>
+                        <div class="flex gap-2">
+                            ${serviceRequests.map(t => `<span class="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs font-bold">${t.name}: ${t.serviceStatus}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (tab === 'dashboard') {
+                const revenue = db.orders.filter(o => o.status === 'served').reduce((s,o)=>s+o.total, 0);
+                const count = db.orders.filter(o => o.status === 'served').length;
+                html += `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl shadow border-l-4 border-green-500">
+                            <h3 class="text-gray-500 text-sm font-bold uppercase">今日營收</h3>
+                            <p class="text-4xl font-bold mt-2">$${revenue.toLocaleString()}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow border-l-4 border-blue-500">
+                            <h3 class="text-gray-500 text-sm font-bold uppercase">出餐數</h3>
+                            <p class="text-4xl font-bold mt-2">${count}</p>
+                        </div>
+                    </div>
+                `;
+            } else if (tab === 'tables') {
+                const now = Date.now();
+                const limit = 90 * 60 * 1000;
+
+                html += `<div class="grid grid-cols-2 md:grid-cols-3 gap-6">`;
+                
+                Object.values(db.tables).forEach(t => {
+                    let timerHtml = '<span class="text-gray-400">未計時</span>';
+                    let statusClass = 'table-empty';
+                    let timeLeftMin = 0;
+                    let serviceIcon = '';
+
+                    if (t.serviceStatus === 'water') serviceIcon = '<div class="absolute -top-2 -right-2 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg service-calling"><i class="fa-solid fa-glass-water"></i></div>';
+                    if (t.serviceStatus === 'staff') serviceIcon = '<div class="absolute -top-2 -right-2 w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center shadow-lg service-calling"><i class="fa-solid fa-bell-concierge"></i></div>';
+                    if (t.serviceStatus === 'checkout') serviceIcon = '<div class="absolute -top-2 -right-2 w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg service-calling"><i class="fa-solid fa-wallet"></i></div>';
+
+                    if (t.status === 'dining' && t.startTime) {
+                        const elapsed = now - t.startTime;
+                        const remaining = limit - elapsed;
+                        timeLeftMin = Math.ceil(remaining / 60000);
+                        
+                        if (remaining <= 0) {
+                            statusClass = 'table-urgent';
+                            timerHtml = `<span class="text-red-600 font-bold text-xl"><i class="fa-solid fa-triangle-exclamation"></i> 超時 ${Math.abs(timeLeftMin)} 分</span>`;
+                        } else if (remaining < 15 * 60 * 1000) {
+                            statusClass = 'table-urgent';
+                            timerHtml = `<span class="text-red-500 font-bold text-xl">${timeLeftMin} min</span>`;
+                        } else {
+                            statusClass = 'table-dining';
+                            timerHtml = `<span class="text-green-600 font-bold text-xl">${timeLeftMin} min</span>`;
+                        }
+                    } else if (t.status === 'seated') {
+                        statusClass = 'table-seated';
+                        timerHtml = '<span class="text-blue-500">點餐中...</span>';
+                    }
+
+                    html += `
+                        <div class="${statusClass} rounded-xl p-4 flex flex-col justify-between h-40 shadow-sm relative transition-all group">
+                            ${serviceIcon}
+                            <div class="flex justify-between items-start">
+                                <h4 class="font-bold text-xl">${t.name}</h4>
+                                <div class="flex flex-col gap-1 items-end">
+                                    ${t.status !== 'empty' ? `<button onclick="clearTable('${t.id}')" class="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-red-50 text-gray-500 hover:text-red-500">清桌</button>` : ''}
+                                    ${t.serviceStatus ? `<button onclick="resolveService('${t.id}')" class="text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-700 shadow">完成服務</button>` : ''}
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col items-center justify-center flex-1">
+                                ${timerHtml}
+                                ${t.status !== 'empty' ? `<p class="text-xs mt-1 font-medium">累積金額: $${t.totalAmount}</p>` : ''}
+                                ${t.status !== 'empty' ? `<p class="text-xs text-gray-500">${t.orderCount} 張單</p>` : ''}
+                            </div>
+                            
+                            ${t.status === 'empty' ? '<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black bg-opacity-5 transition cursor-pointer" onclick="openTable(\''+t.id+'\')"><span class="bg-white px-3 py-1 rounded shadow text-sm font-bold">手動開桌</span></div>' : ''}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            } else if (tab === 'menu') {
+                // 餐點庫存管理介面
+                html += `
+                    <div class="bg-white rounded-xl shadow overflow-hidden">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">餐點名稱</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">價格</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態 (上架/售完)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                ${db.menu.map(item => `
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.name}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$${item.price}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <button onclick="toggleItemAvailability(${item.id})" 
+                                                class="px-3 py-1 rounded-full text-xs font-bold border transition ${item.available ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}">
+                                                ${item.available ? '販售中' : '已售完'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function setAdminTab(t) { window.RestaurantDB.uiState.adminTab = t; renderAll(); }
+        
+        function toggleItemAvailability(itemId) {
+            const item = window.RestaurantDB.menu.find(m => m.id === itemId);
+            if (item) {
+                item.available = !item.available;
+                renderAll();
+            }
+        }
+
+        function clearTable(tid) {
+            if(!confirm('確認客人已買單離場，要清空桌位嗎？')) return;
+            const t = window.RestaurantDB.tables[tid];
+            t.status = 'empty'; t.startTime = null; t.orderCount = 0; t.totalAmount = 0; t.serviceStatus = null;
+            renderAll();
+        }
+
+        function openTable(tid) {
+            const t = window.RestaurantDB.tables[tid];
+            t.status = 'seated';
+            renderAll();
+        }
+
+        function resolveService(tid) {
+            const t = window.RestaurantDB.tables[tid];
+            t.serviceStatus = null;
+            renderAll();
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
