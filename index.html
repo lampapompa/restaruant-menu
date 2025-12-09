@@ -15,7 +15,8 @@
         body { font-family: 'Noto Sans TC', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* 移除淡入動畫，減少圖層重繪造成的閃爍 */
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
         .kitchen-mode { background-color: #1a202c; color: #e2e8f0; }
         .kitchen-card-urgent { border: 2px solid #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
@@ -25,9 +26,11 @@
         .service-calling { animation: servicePulse 1s infinite alternate; }
         @keyframes servicePulse { from { box-shadow: 0 0 5px #eab308; } to { box-shadow: 0 0 20px #eab308; border-color: #eab308; } }
 
+        /* 地圖編輯器樣式 */
         .floor-plan-container {
             background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
             background-size: 20px 20px;
+            /* 移除 overflow:hidden 以免擋住邊緣的刪除按鈕 */
             position: relative;
             touch-action: none;
         }
@@ -35,20 +38,26 @@
         .table-node:active { transform: scale(1.05); }
         .table-editing { cursor: grab; border: 2px dashed #f97316 !important; }
         .table-editing:active { cursor: grabbing; border: 2px solid #f97316 !important; }
-        .delete-btn { z-index: 50; cursor: pointer; pointer-events: auto; }
+        
+        /* 刪除按鈕樣式 */
+        .delete-btn { 
+            cursor: pointer; 
+            pointer-events: auto; /* 確保能接收點擊 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 h-screen flex flex-col overflow-hidden">
 
     <!-- 頂部導航 -->
-    <nav class="bg-white shadow-md z-[1000] flex-none relative">
+    <nav class="bg-white shadow-md z-50 flex-none relative">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center gap-2">
                     <i class="fa-solid fa-utensils text-orange-500 text-2xl"></i>
                     <div class="flex flex-col leading-none">
                         <span class="font-bold text-xl tracking-wider">三口ㄜ ˋ了<span class="text-orange-500">點餐系統Pro</span></span>
-                        <span class="text-[10px] text-gray-400 font-mono">v202512092041-LayoutFixed</span>
+                        <span class="text-[10px] text-gray-400 font-mono">v202512092023-HotFix</span>
                     </div>
                 </div>
                 
@@ -70,11 +79,11 @@
         </div>
     </nav>
 
-    <!-- 主內容區域：移除 scroll-smooth 以避免切換時的視覺跳動 -->
-    <main id="app-container" class="flex-1 overflow-y-auto relative bg-gray-50 flex flex-col"></main>
+    <!-- 主內容區域 -->
+    <main id="app-container" class="flex-1 overflow-y-auto relative scroll-smooth bg-gray-50 flex flex-col"></main>
 
     <!-- Modal 區域 -->
-    <div id="history-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[2000] hidden flex items-end sm:items-center justify-center">
+    <div id="history-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[65] hidden flex items-end sm:items-center justify-center fade-in">
         <div class="bg-white w-full sm:w-[480px] sm:rounded-xl rounded-t-xl p-0 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
             <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
                 <h3 class="text-lg font-bold"><i class="fa-solid fa-clipboard-list mr-2"></i>已點餐點明細</h3>
@@ -99,7 +108,7 @@
         </div>
     </div>
 
-    <div id="checkout-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[2000] hidden flex items-end sm:items-center justify-center">
+    <div id="checkout-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden flex items-end sm:items-center justify-center fade-in">
         <div class="bg-white w-full sm:w-96 sm:rounded-xl rounded-t-xl p-6 shadow-2xl max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 class="text-xl font-bold">送出訂單</h3>
@@ -116,7 +125,7 @@
         </div>
     </div>
 
-    <div id="table-select-modal" class="fixed inset-0 bg-black bg-opacity-80 z-[2500] hidden flex items-center justify-center">
+    <div id="table-select-modal" class="fixed inset-0 bg-black bg-opacity-80 z-[70] hidden flex items-center justify-center fade-in">
         <div class="bg-white w-80 rounded-xl p-6 shadow-2xl text-center">
             <div class="mb-4 text-orange-500 text-4xl"><i class="fa-solid fa-qrcode"></i></div>
             <h3 class="text-xl font-bold mb-2">請模擬掃描桌號</h3>
@@ -159,22 +168,27 @@
                 bread: ['香蒜麵包', '奶油餐包']
             },
             menu: [
+                // Pasta
                 { id: 101, category: 'pasta', name: '奶油培根義大利麵', desc: '濃厚白醬配上煙燻培根', price: 220, image: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍝', available: true, allowCombo: true, modifiers: ['加辣', '不要起司', '麵硬'] },
                 { id: 102, category: 'pasta', name: '青醬蛤蠣義大利麵', desc: '新鮮羅勒與大顆蛤蠣', price: 240, image: 'https://images.unsplash.com/photo-1626844131082-256783844137?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🌿', available: true, allowCombo: true, modifiers: ['加辣', '不要蒜'] },
                 { id: 103, category: 'pasta', name: '番茄肉醬義大利麵', desc: '經典波隆那肉醬', price: 200, image: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍅', available: true, allowCombo: true, modifiers: ['加辣', '加起司'] },
                 { id: 104, category: 'pasta', name: '墨魚海鮮義大利麵', desc: '新鮮墨魚汁與透抽', price: 280, image: 'https://images.unsplash.com/photo-1608219992759-8d74ed8d76eb?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🦑', available: true, allowCombo: true, modifiers: ['加辣'] },
+                // Risotto
                 { id: 201, category: 'risotto', name: '松露野菇燉飯', desc: '進口松露油與綜合野菇', price: 280, image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍄', available: true, allowCombo: true, modifiers: ['飯軟', '飯硬'] },
                 { id: 202, category: 'risotto', name: '海鮮番茄燉飯', desc: '酸甜茄汁與綜合海鮮', price: 300, image: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🦐', available: true, allowCombo: true, modifiers: ['飯軟', '飯硬', '加辣'] },
                 { id: 203, category: 'risotto', name: '南瓜雞肉燉飯', desc: '濃郁南瓜醬與嫩雞胸', price: 260, image: 'https://images.unsplash.com/photo-1595295333158-4742f28fbd85?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🎃', available: true, allowCombo: true, modifiers: ['飯軟', '飯硬'] },
                 { id: 204, category: 'risotto', name: '奶油鮭魚燉飯', desc: '挪威鮭魚與白醬', price: 320, image: 'https://images.unsplash.com/photo-1634861803736-23c28df776fa?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🐟', available: true, allowCombo: true, modifiers: ['飯軟', '飯硬'] },
+                // Steak
                 { id: 301, category: 'steak', name: '紐約客牛排', desc: '10oz 嚴選部位，多汁軟嫩', price: 580, image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🥩', available: true, allowCombo: true, modifiers: ['三分熟', '五分熟', '七分熟', '全熟', '黑胡椒醬', '蘑菇醬'] },
                 { id: 302, category: 'steak', name: '菲力牛排', desc: '8oz 最軟嫩部位', price: 780, image: 'https://images.unsplash.com/photo-1615937657715-bc7b4b7962c1?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍖', available: true, allowCombo: true, modifiers: ['三分熟', '五分熟', '七分熟', '全熟', '玫瑰鹽'] },
                 { id: 303, category: 'steak', name: '肋眼牛排', desc: '12oz 油脂豐富', price: 980, image: 'https://images.unsplash.com/photo-1546964124-0cce460f38ef?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🥩', available: true, allowCombo: true, modifiers: ['三分熟', '五分熟', '七分熟', '全熟'] },
                 { id: 304, category: 'steak', name: '法式羊排', desc: '紐西蘭小羔羊', price: 680, image: 'https://images.unsplash.com/photo-1606756790138-7c4854964654?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍖', available: true, allowCombo: true, modifiers: ['七分熟', '全熟', '薄荷醬'] },
+                // Drinks
                 { id: 401, category: 'drink', name: '特調水果茶', desc: '新鮮水果切片', price: 120, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍹', available: true, allowCombo: false, modifiers: ['正常冰', '少冰', '去冰', '正常糖', '半糖', '微糖'] },
                 { id: 402, category: 'drink', name: '珍珠奶茶', desc: 'Q彈珍珠', price: 100, image: 'https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🧋', available: true, allowCombo: false, modifiers: ['正常冰', '少冰', '去冰', '正常糖', '半糖', '微糖'] },
                 { id: 403, category: 'drink', name: '美式咖啡', desc: '深烘焙豆', price: 90, image: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=400&h=400&q=80', emoji: '☕', available: true, allowCombo: false, modifiers: ['熱', '冰', '不加糖', '加糖'] },
                 { id: 404, category: 'drink', name: '拿鐵咖啡', desc: '香濃牛奶', price: 110, image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🥛', available: true, allowCombo: false, modifiers: ['熱', '冰', '少冰', '去冰'] },
+                // Desserts
                 { id: 501, category: 'dessert', name: '熔岩巧克力蛋糕', desc: '現烤熱蛋糕', price: 150, image: 'https://images.unsplash.com/photo-1624353365286-3f8d62daad51?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍫', available: true, allowCombo: false, modifiers: ['餐後上', '先上'] },
                 { id: 502, category: 'dessert', name: '重乳酪蛋糕', desc: '濃郁口感', price: 120, image: 'https://images.unsplash.com/photo-1567327613485-fbc7bf196198?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍰', available: true, allowCombo: false, modifiers: ['餐後上', '先上'] },
                 { id: 503, category: 'dessert', name: '提拉米蘇', desc: '義式經典', price: 140, image: 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🎂', available: true, allowCombo: false, modifiers: ['餐後上', '先上'] },
@@ -301,15 +315,6 @@
             else renderAll();
         }
 
-        // 修改後的 filterCategory：切換時強制捲動到頂部
-        function filterCategory(id) { 
-            window.RestaurantDB.uiState.activeCategory = id; 
-            renderAll(); 
-            // 強制容器捲動到最上方
-            const container = document.getElementById('app-container');
-            if(container) container.scrollTop = 0;
-        }
-
         function selectCombo(id, cid) {
             const db = window.RestaurantDB;
             const needs = db.combos[cid].needs;
@@ -422,18 +427,11 @@
             saveDB();
         }
 
-        function toggleCard(id) { 
-            const db = window.RestaurantDB; 
-            db.uiState.expandedCardId = db.uiState.expandedCardId === id ? null : id;
-            if (db.uiState.expandedCardId && !db.uiState.tempSelections[id]) db.uiState.tempSelections[id] = { comboType: 'none', choices: {}, note: null };
-            renderAll(); 
-        }
-
-        // 修改後的 renderCustomerView：導航列 z-index 提升至 999
         function renderCustomerView(container) {
             const db = window.RestaurantDB;
+            // 修正版：Sticky Header 加上 z-50 和背景色，防止被餐點擋住
             let html = `
-                <div class="sticky top-0 z-[999] bg-white border-b shadow-sm py-3 overflow-x-auto hide-scrollbar whitespace-nowrap px-4">
+                <div class="sticky top-0 z-50 bg-white border-b shadow-sm py-3 overflow-x-auto hide-scrollbar whitespace-nowrap px-4">
                     <div class="flex space-x-2">
                         ${db.categories.map(cat => `<button onclick="filterCategory('${cat.id}')" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all ${db.uiState.activeCategory === cat.id ? 'bg-orange-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">${cat.name}</button>`).join('')}
                     </div>
@@ -446,6 +444,7 @@
                 const tempState = db.uiState.tempSelections[item.id] || { comboType: 'none', choices: {}, note: null };
                 const isExpanded = db.uiState.expandedCardId === item.id;
                 const isSoldOut = !item.available;
+                
                 const isMainCourse = item.allowCombo;
 
                 html += `
@@ -455,7 +454,7 @@
                             <div class="flex p-4 gap-4">
                                 <div class="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden relative">
                                     <div class="absolute inset-0 flex items-center justify-center bg-orange-50 text-4xl select-none">${item.emoji}</div>
-                                    <img src="${item.image}" alt="${item.name}" onerror="handleImageError(this, '${item.emoji}')" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                    <img src="${item.image}" alt="${item.name}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 z-10" loading="lazy" onerror="this.style.display='none'">
                                 </div>
                                 <div class="flex-1 flex flex-col justify-between">
                                     <div>
@@ -543,7 +542,6 @@
 
         function onMouseDown(e, id) {
             if (!window.RestaurantDB.uiState.isEditingMap) return;
-            // 修正：檢查是否點擊刪除按鈕
             if (e.target.closest('.delete-btn')) return;
             
             e.preventDefault(); 
@@ -748,6 +746,13 @@
         }
 
         // --- Helpers ---
+        function filterCategory(id) { window.RestaurantDB.uiState.activeCategory = id; renderAll(); }
+        function toggleCard(id) { 
+            const db = window.RestaurantDB; 
+            db.uiState.expandedCardId = db.uiState.expandedCardId === id ? null : id;
+            if (db.uiState.expandedCardId && !db.uiState.tempSelections[id]) db.uiState.tempSelections[id] = { comboType: 'none', choices: {}, note: null };
+            renderAll(); 
+        }
         function setAdminTab(t) { window.RestaurantDB.uiState.adminTab = t; renderAll(); }
         function toggleItemAvailability(itemId) { const item = window.RestaurantDB.menu.find(m => m.id === itemId); if (item) { item.available = !item.available; renderAll(); } }
         function clearTable(tid) {
