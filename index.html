@@ -15,26 +15,29 @@
         body { font-family: 'Noto Sans TC', sans-serif; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
         .fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
         .kitchen-mode { background-color: #1a202c; color: #e2e8f0; }
         .kitchen-card-urgent { border: 2px solid #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
-        
-        /* 桌況顏色 */
-        .table-empty { background-color: #f3f4f6; border: 2px dashed #d1d5db; color: #9ca3af; }
-        .table-seated { background-color: #dbeafe; border: 2px solid #3b82f6; color: #1e40af; }
-        .table-dining { background-color: #d1fae5; border: 2px solid #10b981; color: #065f46; }
-        .table-urgent { background-color: #fee2e2; border: 2px solid #ef4444; color: #991b1b; animation: pulseBorder 2s infinite; }
-        
-        /* 售完樣式 (圖片灰階) */
         .item-sold-out { opacity: 0.8; pointer-events: none; }
         .item-sold-out img { filter: grayscale(100%); }
         .badge-sold-out { position: absolute; top: 10px; right: 10px; background: #ef4444; color: white; font-weight: bold; font-size: 0.75rem; padding: 4px 12px; border-radius: 4px; transform: rotate(15deg); z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.3); border: 2px solid white; }
-
         .service-calling { animation: servicePulse 1s infinite alternate; }
         @keyframes servicePulse { from { box-shadow: 0 0 5px #eab308; } to { box-shadow: 0 0 20px #eab308; border-color: #eab308; } }
+
+        /* 地圖編輯器樣式 */
+        .floor-plan-container {
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+            overflow: hidden;
+            position: relative;
+            touch-action: none; /* 防止手機拖拉時捲動頁面 */
+        }
+        .table-node { cursor: pointer; transition: transform 0.1s, box-shadow 0.2s; user-select: none; }
+        .table-node:active { transform: scale(1.05); }
+        .table-editing { cursor: move; border: 2px dashed #f97316 !important; animation: dash 10s linear infinite; }
+        @keyframes dash { to { stroke-dashoffset: 1000; } }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 h-screen flex flex-col overflow-hidden">
@@ -47,7 +50,7 @@
                     <i class="fa-solid fa-utensils text-orange-500 text-2xl"></i>
                     <div class="flex flex-col leading-none">
                         <span class="font-bold text-xl tracking-wider">三口ㄜ ˋ了<span class="text-orange-500">點餐系統Pro</span></span>
-                        <span class="text-[10px] text-gray-400 font-mono">v202512091721</span>
+                        <span class="text-[10px] text-gray-400 font-mono">v202512091930</span>
                     </div>
                 </div>
                 
@@ -70,38 +73,26 @@
     </nav>
 
     <!-- 主內容區域 -->
-    <main id="app-container" class="flex-1 overflow-y-auto relative scroll-smooth bg-gray-50">
+    <main id="app-container" class="flex-1 overflow-y-auto relative scroll-smooth bg-gray-50 flex flex-col">
         <!-- 內容動態渲染 -->
     </main>
 
-    <!-- 歷史訂單與服務模態框 -->
+    <!-- Modal 區域 -->
     <div id="history-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[65] hidden flex items-end sm:items-center justify-center fade-in">
         <div class="bg-white w-full sm:w-[480px] sm:rounded-xl rounded-t-xl p-0 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
             <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
                 <h3 class="text-lg font-bold"><i class="fa-solid fa-clipboard-list mr-2"></i>已點餐點明細</h3>
                 <button onclick="toggleModal('history-modal', false)" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
             </div>
-            
             <div class="bg-orange-50 p-4 border-b border-orange-100">
                 <h4 class="text-xs font-bold text-orange-800 mb-2 uppercase tracking-wide">呼叫服務 (Service)</h4>
                 <div class="grid grid-cols-3 gap-3">
-                    <button onclick="callService('water')" class="flex flex-col items-center justify-center bg-white p-3 rounded-lg border border-orange-200 shadow-sm hover:bg-orange-100 transition text-blue-500">
-                        <i class="fa-solid fa-glass-water text-xl mb-1"></i>
-                        <span class="text-xs font-bold text-gray-700">加水</span>
-                    </button>
-                    <button onclick="callService('staff')" class="flex flex-col items-center justify-center bg-white p-3 rounded-lg border border-orange-200 shadow-sm hover:bg-orange-100 transition text-purple-500">
-                        <i class="fa-solid fa-bell-concierge text-xl mb-1"></i>
-                        <span class="text-xs font-bold text-gray-700">找店員</span>
-                    </button>
-                    <button onclick="callService('checkout')" class="flex flex-col items-center justify-center bg-white p-3 rounded-lg border border-orange-200 shadow-sm hover:bg-orange-100 transition text-green-600">
-                        <i class="fa-solid fa-wallet text-xl mb-1"></i>
-                        <span class="text-xs font-bold text-gray-700">我要結帳</span>
-                    </button>
+                    <button onclick="callService('water')" class="flex flex-col items-center justify-center bg-white p-3 rounded-lg border border-orange-200 shadow-sm hover:bg-orange-100 transition text-blue-500"><i class="fa-solid fa-glass-water text-xl mb-1"></i><span class="text-xs font-bold text-gray-700">加水</span></button>
+                    <button onclick="callService('staff')" class="flex flex-col items-center justify-center bg-white p-3 rounded-lg border border-orange-200 shadow-sm hover:bg-orange-100 transition text-purple-500"><i class="fa-solid fa-bell-concierge text-xl mb-1"></i><span class="text-xs font-bold text-gray-700">找店員</span></button>
+                    <button onclick="callService('checkout')" class="flex flex-col items-center justify-center bg-white p-3 rounded-lg border border-orange-200 shadow-sm hover:bg-orange-100 transition text-green-600"><i class="fa-solid fa-wallet text-xl mb-1"></i><span class="text-xs font-bold text-gray-700">我要結帳</span></button>
                 </div>
             </div>
-
             <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"></div>
-
             <div class="p-4 bg-white border-t border-gray-200">
                 <div class="flex justify-between items-end">
                     <span class="text-gray-500 text-sm">目前累計金額</span>
@@ -112,7 +103,6 @@
         </div>
     </div>
 
-    <!-- 購物車結帳模態框 -->
     <div id="checkout-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden flex items-end sm:items-center justify-center fade-in">
         <div class="bg-white w-full sm:w-96 sm:rounded-xl rounded-t-xl p-6 shadow-2xl max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
@@ -125,15 +115,11 @@
                     <span class="text-gray-600">本單金額</span>
                     <span id="modal-total-price" class="text-2xl font-bold text-orange-600">$0</span>
                 </div>
-                <button onclick="processPayment()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow transition transform active:scale-95">
-                    確認點餐
-                </button>
-                <p class="text-xs text-center text-gray-400 mt-2">點餐後，桌位計時器將自動開始</p>
+                <button onclick="processPayment()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-lg shadow transition transform active:scale-95">確認點餐</button>
             </div>
         </div>
     </div>
 
-    <!-- 桌號選擇模態框 -->
     <div id="table-select-modal" class="fixed inset-0 bg-black bg-opacity-80 z-[70] hidden flex items-center justify-center fade-in">
         <div class="bg-white w-80 rounded-xl p-6 shadow-2xl text-center">
             <div class="mb-4 text-orange-500 text-4xl"><i class="fa-solid fa-qrcode"></i></div>
@@ -144,28 +130,25 @@
     </div>
 
     <script>
-        // --- 全域工具函式：雙保險圖片處理 ---
-        // 當圖片載入失敗 (onerror) 時，自動替換為 Emoji
+        // --- 核心工具 ---
         function handleImageError(img, emoji) {
-            img.onerror = null; // 防止無限迴圈
-            const parent = img.parentElement;
-            // 將父容器內容替換為 Emoji 顯示
-            parent.innerHTML = '<div class="w-full h-full bg-orange-50 flex items-center justify-center text-5xl select-none">' + emoji + '</div>';
+            img.onerror = null; 
+            img.parentElement.innerHTML = '<div class="w-full h-full bg-orange-50 flex items-center justify-center text-5xl select-none">' + emoji + '</div>';
         }
 
-        // --- 1. 資料結構與持久化 ---
+        // --- 1. 資料結構更新 ---
         
         const DEFAULT_DB = {
             view: 'customer',
             currentTableId: null,
             cart: [],
             tables: {
-                'T1': { id: 'T1', name: '1桌', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
-                'T2': { id: 'T2', name: '2桌', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
-                'T3': { id: 'T3', name: '3桌', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
-                'T4': { id: 'T4', name: '5桌', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
-                'T5': { id: 'T5', name: '6桌', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
-                'T6': { id: 'T6', name: 'VIP', status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 }
+                'T1': { id: 'T1', name: '1桌', type: 'round', x: 50, y: 50, seats: 2, status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
+                'T2': { id: 'T2', name: '2桌', type: 'square', x: 200, y: 50, seats: 4, status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
+                'T3': { id: 'T3', name: '3桌', type: 'square', x: 350, y: 50, seats: 4, status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
+                'T4': { id: 'T4', name: '5桌', type: 'rect', x: 50, y: 200, seats: 6, status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
+                'T5': { id: 'T5', name: '6桌', type: 'rect', x: 250, y: 200, seats: 6, status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 },
+                'T6': { id: 'T6', name: 'VIP', type: 'round', x: 350, y: 350, seats: 2, status: 'empty', serviceStatus: null, startTime: null, orderCount: 0, totalAmount: 0 }
             },
             combos: {
                 none: { id: 'none', name: '單點', price: 0, needs: [] },
@@ -179,14 +162,13 @@
                 salad: ['凱薩沙拉', '和風油醋'],
                 bread: ['香蒜麵包', '奶油餐包']
             },
-            // 同時設定圖片與 Emoji，確保雙重保險
             menu: [
-                { id: 1, category: 'pasta', name: '奶油培根義大利麵', desc: '濃厚白醬配上煙燻培根', price: 220, image: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍝', available: true },
-                { id: 2, category: 'pasta', name: '青醬蛤蠣義大利麵', desc: '新鮮羅勒與大顆蛤蠣', price: 240, image: 'https://images.unsplash.com/photo-1626844131082-256783844137?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🌿', available: true },
-                { id: 3, category: 'risotto', name: '松露野菇燉飯', desc: '進口松露油與綜合野菇', price: 280, image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍄', available: true },
-                { id: 4, category: 'risotto', name: '海鮮番茄燉飯', desc: '酸甜茄汁與綜合海鮮', price: 300, image: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🦐', available: true },
-                { id: 5, category: 'steak', name: '紐約客牛排', desc: '10oz 嚴選部位，多汁軟嫩', price: 580, image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🥩', available: true },
-                { id: 6, category: 'drink', name: '特調水果茶', desc: '新鮮水果切片', price: 120, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍹', available: true }
+                { id: 1, category: 'pasta', name: '奶油培根義大利麵', desc: '濃厚白醬配上煙燻培根', price: 220, image: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍝', available: true, modifiers: ['加辣', '不要起司', '麵硬'] },
+                { id: 2, category: 'pasta', name: '青醬蛤蠣義大利麵', desc: '新鮮羅勒與大顆蛤蠣', price: 240, image: 'https://images.unsplash.com/photo-1626844131082-256783844137?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🌿', available: true, modifiers: ['加辣', '不要蒜'] },
+                { id: 3, category: 'risotto', name: '松露野菇燉飯', desc: '進口松露油與綜合野菇', price: 280, image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍄', available: true, modifiers: ['飯軟', '飯硬'] },
+                { id: 4, category: 'risotto', name: '海鮮番茄燉飯', desc: '酸甜茄汁與綜合海鮮', price: 300, image: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🦐', available: true, modifiers: ['飯軟', '飯硬', '加辣'] },
+                { id: 5, category: 'steak', name: '紐約客牛排', desc: '10oz 嚴選部位，多汁軟嫩', price: 580, image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🥩', available: true, modifiers: ['三分熟', '五分熟', '七分熟', '全熟', '黑胡椒醬', '蘑菇醬'] },
+                { id: 6, category: 'drink', name: '特調水果茶', desc: '新鮮水果切片', price: 120, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍹', available: true, modifiers: ['正常冰', '少冰', '去冰', '正常糖', '半糖', '微糖', '無糖'] }
             ],
             categories: [
                 { id: 'all', name: '全部' },
@@ -200,17 +182,25 @@
                 activeCategory: 'all',
                 expandedCardId: null,
                 tempSelections: {},
-                adminTab: 'tables' 
+                adminTab: 'tables',
+                isEditingMap: false
             }
         };
 
+        // --- 初始化與資料庫 ---
         function loadDB() {
             const saved = localStorage.getItem('gourmetOS_v2');
             if (saved) {
                 window.RestaurantDB = JSON.parse(saved);
-                window.RestaurantDB.uiState = DEFAULT_DB.uiState;
-                
-                // 資料結構遷移 (確保有 image 和 emoji)
+                window.RestaurantDB.uiState = DEFAULT_DB.uiState; 
+                // 資料結構遷移
+                const defaultKeys = Object.keys(DEFAULT_DB.tables);
+                Object.values(window.RestaurantDB.tables).forEach((t, i) => {
+                    if (t.x === undefined) {
+                        const def = DEFAULT_DB.tables[defaultKeys[i]] || {x:50, y:50, type:'square'};
+                        t.x = def.x; t.y = def.y; t.type = def.type;
+                    }
+                });
                 window.RestaurantDB.menu.forEach((m, idx) => {
                     if(DEFAULT_DB.menu[idx]) {
                         if (!m.emoji) m.emoji = DEFAULT_DB.menu[idx].emoji;
@@ -223,9 +213,7 @@
             }
         }
 
-        function saveDB() {
-            localStorage.setItem('gourmetOS_v2', JSON.stringify(window.RestaurantDB));
-        }
+        function saveDB() { localStorage.setItem('gourmetOS_v2', JSON.stringify(window.RestaurantDB)); }
 
         function initFakeData() {
             const now = Date.now();
@@ -240,9 +228,8 @@
             db.tables['T3'].orderCount = 1;
             db.tables['T3'].totalAmount = 580;
             db.orders = [
-                { id: 'ORD-1001', tableId: 'T2', timestamp: now - (76 * 60 * 1000), status: 'served', items: [{ name: '奶油培根義大利麵', price: 220, comboName: '經典套餐', comboPrice: 119, subItems: ['可口可樂', '法式烤布蕾'], itemTotal: 339, basePrice: 220 }], total: 339 },
-                { id: 'ORD-1002', tableId: 'T3', timestamp: now - (10 * 60 * 1000), status: 'pending', items: [{ name: '紐約客牛排', price: 580, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 580, basePrice: 580 }], total: 580 },
-                // 增加一些假資料讓圖表好看
+                { id: 'ORD-1001', tableId: 'T2', timestamp: now - (76 * 60 * 1000), status: 'served', items: [{ name: '奶油培根義大利麵', price: 220, comboName: '經典套餐', comboPrice: 119, subItems: ['可口可樂', '法式烤布蕾'], itemTotal: 339, basePrice: 220, note: '' }], total: 339 },
+                { id: 'ORD-1002', tableId: 'T3', timestamp: now - (10 * 60 * 1000), status: 'pending', items: [{ name: '紐約客牛排', price: 580, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 580, basePrice: 580, note: '五分熟' }], total: 580 },
                 { id: 'ORD-999', tableId: 'T1', timestamp: now - (120 * 60 * 1000), status: 'served', items: [{ name: '紐約客牛排', price: 580, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 580, basePrice: 580 }], total: 580 },
                 { id: 'ORD-998', tableId: 'T1', timestamp: now - (120 * 60 * 1000), status: 'served', items: [{ name: '松露野菇燉飯', price: 280, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 280, basePrice: 280 }], total: 280 }
             ];
@@ -260,14 +247,14 @@
             if (window.RestaurantDB.view === 'customer' && !window.RestaurantDB.currentTableId) showTableSelectModal();
         }
 
-        // --- Demo Reset ---
         function resetDemo() {
-            if(confirm('【銷售員專用】確定要重置所有數據嗎？\n這將清空所有訂單並恢復預設值。')) {
+            if(confirm('【銷售員專用】確定要重置所有數據嗎？\n這將清空所有訂單、還原桌位配置。')) {
                 localStorage.removeItem('gourmetOS_v2');
                 location.reload();
             }
         }
 
+        // --- View Controller ---
         function renderAll() {
             const db = window.RestaurantDB;
             const container = document.getElementById('app-container');
@@ -310,98 +297,75 @@
             else renderAll();
         }
 
-        function showTableSelectModal() {
-            const grid = document.getElementById('table-select-grid');
+        // --- Customer Logic (with Modifiers) ---
+        function selectCombo(id, cid) {
             const db = window.RestaurantDB;
-            grid.innerHTML = Object.values(db.tables).map(t => `
-                <button onclick="selectTable('${t.id}')" class="p-3 border rounded-lg hover:bg-orange-50 hover:border-orange-500 transition flex flex-col items-center gap-1 bg-white relative overflow-hidden">
-                    <span class="font-bold text-lg">${t.name}</span>
-                    <span class="text-xs ${t.status === 'empty' ? 'text-green-500' : 'text-blue-500'}">${t.status === 'empty' ? '空桌' : '用餐中'}</span>
-                    ${t.status !== 'empty' ? '<div class="absolute top-0 right-0 bg-blue-500 text-white text-[10px] px-1 rounded-bl">加入</div>' : ''}
-                </button>
-            `).join('');
-            document.getElementById('table-select-modal').classList.remove('hidden');
-        }
-
-        function selectTable(tableId) {
-            const db = window.RestaurantDB;
-            db.currentTableId = tableId;
-            document.getElementById('table-select-modal').classList.add('hidden');
-            if (db.tables[tableId].status === 'empty') db.tables[tableId].status = 'seated';
+            const needs = db.combos[cid].needs;
+            const defaults = {};
+            needs.forEach(c => defaults[c] = db.optionPool[c][0]);
+            db.uiState.tempSelections[id] = { comboType: cid, choices: defaults, note: null };
             renderAll();
         }
-
-        function callService(type) {
-            const db = window.RestaurantDB;
-            if (!db.currentTableId) return;
-            const table = db.tables[db.currentTableId];
-            if (table.serviceStatus === type) {
-                table.serviceStatus = null;
-                alert('已取消服務請求');
-            } else {
-                table.serviceStatus = type;
-                let msg = type === 'water' ? '加水' : (type === 'staff' ? '找店員' : '結帳');
-                alert(`已送出「${msg}」請求，服務人員將盡快為您服務。`);
-            }
-            updateHistoryModal();
+        
+        function selectNote(id, note) {
+            const sel = window.RestaurantDB.uiState.tempSelections[id];
+            if(sel) sel.note = note;
             saveDB();
         }
 
-        function updateHistoryModal() {
+        function addToCart(id) {
             const db = window.RestaurantDB;
-            if (!db.currentTableId) return;
-            const myOrders = db.orders.filter(o => o.tableId === db.currentTableId).sort((a,b) => b.timestamp - a.timestamp);
-            const container = document.getElementById('history-list');
-            const totalEl = document.getElementById('history-total');
-            let html = '', grandTotal = 0;
-            if (myOrders.length === 0) {
-                html = '<div class="text-center text-gray-400 py-10">尚無點餐紀錄</div>';
-            } else {
-                myOrders.forEach(order => {
-                    grandTotal += order.total;
-                    const timeStr = new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const isPending = order.status === 'pending';
-                    html += `
-                        <div class="bg-white rounded-lg border border-gray-200 p-3 shadow-sm">
-                            <div class="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
-                                <span class="text-xs font-mono text-gray-500">#${order.id.split('-')[1]} • ${timeStr}</span>
-                                <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isPending ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}">${isPending ? '製作中' : '已上菜'}</span>
-                            </div>
-                            <div class="space-y-3">
-                                ${order.items.map(item => `
-                                    <div class="flex flex-col text-sm border-b border-gray-50 last:border-0 pb-2 last:pb-0">
-                                        <div class="flex justify-between items-baseline">
-                                            <div class="text-gray-800 font-bold">${item.name}</div>
-                                            <div class="text-gray-600 font-mono">$${item.basePrice}</div>
-                                        </div>
-                                        ${item.comboPrice > 0 ? `
-                                            <div class="flex justify-between items-center text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded mt-1">
-                                                <span><i class="fa-solid fa-plus mr-1"></i>${item.comboName}</span>
-                                                <span>+$${item.comboPrice}</span>
-                                            </div>
-                                        ` : ''}
-                                        ${item.subItems.length > 0 ? `<div class="text-xs text-gray-400 mt-1 pl-1">${item.subItems.join(' / ')}</div>` : ''}
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <div class="mt-2 pt-2 border-t border-gray-100 text-right text-sm font-bold text-gray-900">小計 $${order.total}</div>
-                        </div>
-                    `;
-                });
+            const item = db.menu.find(m => m.id === id);
+            let sel = db.uiState.tempSelections[id];
+            
+            if (!sel) {
+                sel = { comboType: 'none', choices: {}, note: null };
             }
-            container.innerHTML = html;
-            totalEl.innerText = `$${grandTotal}`;
+
+            const combo = db.combos[sel.comboType];
+            const noteText = sel.note ? sel.note : '';
+            
+            db.cart.push({ 
+                id: Date.now(), 
+                name: item.name, 
+                basePrice: item.price, 
+                comboName: combo.name, 
+                comboPrice: combo.price, 
+                itemTotal: item.price + combo.price, 
+                subItems: Object.values(sel.choices),
+                note: noteText
+            });
+            db.uiState.expandedCardId = null;
+            db.uiState.tempSelections[id] = null;
+            renderAll();
         }
 
-        function toggleModal(id, show) {
-            const el = document.getElementById(id);
-            if(show) { 
-                el.classList.remove('hidden'); 
-                if(id === 'checkout-modal') updateCheckoutModal();
-                if(id === 'history-modal') updateHistoryModal();
-            } else { 
-                el.classList.add('hidden'); 
-            }
+        function removeFromCart(cartIndex) {
+            const db = window.RestaurantDB;
+            db.cart.splice(cartIndex, 1);
+            updateCheckoutModal();
+            renderAll();
+        }
+
+        // --- 補回 renderSubOptions ---
+        function renderSubOptions(itemId, comboId) {
+            const db = window.RestaurantDB;
+            const combo = db.combos[comboId];
+            if (!combo || combo.needs.length === 0) return '';
+            const choices = db.uiState.tempSelections[itemId]?.choices || {};
+            const names = { drink: '飲品', dessert: '甜點', soup: '湯品', salad: '沙拉', bread: '麵包' };
+            return `<div class="space-y-4">` + combo.needs.map(cat => `
+                <div><p class="text-xs text-gray-500 font-bold mb-2 uppercase">${names[cat]}</p>
+                <div class="grid grid-cols-2 gap-2">${db.optionPool[cat].map(opt => `
+                    <label class="cursor-pointer"><input type="radio" name="opt-${itemId}-${cat}" value="${opt}" class="peer sr-only" ${choices[cat]===opt?'checked':''} onchange="selectSubOption(${itemId}, '${cat}', '${opt}')">
+                    <div class="text-center py-2 px-1 text-xs border rounded peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 bg-white text-gray-600 border-gray-200 hover:bg-gray-50">${opt}</div></label>
+                `).join('')}</div></div>`).join('') + `</div>`;
+        }
+
+        // --- 補回 selectSubOption ---
+        function selectSubOption(id, cat, val) { 
+            window.RestaurantDB.uiState.tempSelections[id].choices[cat] = val;
+            saveDB();
         }
 
         function renderCustomerView(container) {
@@ -409,20 +373,15 @@
             let html = `
                 <div class="sticky top-0 bg-white shadow-sm z-40 py-3 overflow-x-auto hide-scrollbar whitespace-nowrap px-4 border-b">
                     <div class="flex space-x-2">
-                        ${db.categories.map(cat => `
-                            <button onclick="filterCategory('${cat.id}')" 
-                                class="px-4 py-1.5 rounded-full text-sm font-medium transition-all ${db.uiState.activeCategory === cat.id ? 'bg-orange-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">
-                                ${cat.name}
-                            </button>
-                        `).join('')}
+                        ${db.categories.map(cat => `<button onclick="filterCategory('${cat.id}')" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all ${db.uiState.activeCategory === cat.id ? 'bg-orange-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">${cat.name}</button>`).join('')}
                     </div>
                 </div>
+                <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">
             `;
             const filteredMenu = db.uiState.activeCategory === 'all' ? db.menu : db.menu.filter(m => m.category === db.uiState.activeCategory);
             
-            html += `<div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">`;
             filteredMenu.forEach(item => {
-                const tempState = db.uiState.tempSelections[item.id] || { comboType: 'none', choices: {} };
+                const tempState = db.uiState.tempSelections[item.id] || { comboType: 'none', choices: {}, note: null };
                 const isExpanded = db.uiState.expandedCardId === item.id;
                 const isSoldOut = !item.available;
                 
@@ -430,13 +389,9 @@
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md ${isExpanded ? 'ring-2 ring-orange-100' : ''} ${isSoldOut ? 'item-sold-out relative' : ''}">
                         ${isSoldOut ? '<div class="badge-sold-out">SOLD OUT</div>' : ''}
                         <div class="cursor-pointer group" onclick="${isSoldOut ? '' : `toggleCard(${item.id})`}">
-                            <!-- 卡片上半部：圖片與資訊 -->
                             <div class="flex p-4 gap-4">
                                 <div class="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden relative">
-                                    <img src="${item.image}" alt="${item.name}" 
-                                         onerror="handleImageError(this, '${item.emoji}')" 
-                                         referrerpolicy="no-referrer"
-                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                    <img src="${item.image}" alt="${item.name}" onerror="handleImageError(this, '${item.emoji}')" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                                 </div>
                                 <div class="flex-1 flex flex-col justify-between">
                                     <div>
@@ -452,16 +407,22 @@
                         </div>
                         <div class="${isExpanded ? 'block' : 'hidden'} bg-gray-50 border-t border-gray-100 p-4">
                             <div class="grid grid-cols-1 gap-2 mb-4">
-                                ${Object.values(db.combos).map(combo => `
-                                    <label class="flex items-center justify-between p-3 border rounded-lg cursor-pointer bg-white ${tempState.comboType === combo.id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-200'}">
-                                        <div class="flex items-center gap-3">
-                                            <input type="radio" name="combo-${item.id}" value="${combo.id}" ${tempState.comboType === combo.id ? 'checked' : ''} onchange="selectCombo(${item.id}, '${combo.id}')" class="text-orange-500 focus:ring-orange-500 w-4 h-4">
-                                            <span class="text-sm font-medium">${combo.name}</span>
-                                        </div>
-                                        <span class="text-sm font-bold ${combo.price > 0 ? 'text-orange-600' : 'text-gray-400'}">${combo.price > 0 ? `+$${combo.price}` : '+$0'}</span>
-                                    </label>
-                                `).join('')}
+                                ${Object.values(db.combos).map(combo => `<label class="flex items-center justify-between p-3 border rounded-lg cursor-pointer bg-white ${tempState.comboType === combo.id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-orange-200'}"><div class="flex items-center gap-3"><input type="radio" name="combo-${item.id}" value="${combo.id}" ${tempState.comboType === combo.id ? 'checked' : ''} onchange="selectCombo(${item.id}, '${combo.id}')" class="text-orange-500 focus:ring-orange-500 w-4 h-4"><span class="text-sm font-medium">${combo.name}</span></div><span class="text-sm font-bold ${combo.price > 0 ? 'text-orange-600' : 'text-gray-400'}">${combo.price > 0 ? `+$${combo.price}` : '+$0'}</span></label>`).join('')}
                             </div>
+                            <!-- 口味/註記選擇 (新增) -->
+                            ${item.modifiers ? `
+                                <div class="mb-4">
+                                    <p class="text-xs text-gray-500 font-bold mb-2 uppercase">口味/註記</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${item.modifiers.map(mod => `
+                                            <label class="cursor-pointer">
+                                                <input type="radio" name="mod-${item.id}" value="${mod}" class="peer sr-only" onchange="selectNote(${item.id}, '${mod}')">
+                                                <div class="text-xs px-2 py-1 border rounded bg-white text-gray-600 border-gray-200 hover:bg-gray-50 peer-checked:bg-gray-800 peer-checked:text-white peer-checked:border-gray-800 transition-colors">${mod}</div>
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
                             ${renderSubOptions(item.id, tempState.comboType)}
                             <div class="mt-4 pt-3 border-t flex justify-end">
                                 <button onclick="addToCart(${item.id})" class="bg-gray-900 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-gray-800 transition shadow-lg flex items-center gap-2 transform active:scale-95">
@@ -475,120 +436,36 @@
             html += `</div>`;
             if (db.cart.length > 0) {
                 const total = db.cart.reduce((sum, i) => sum + i.itemTotal, 0);
-                html += `
-                    <div class="fixed bottom-4 left-4 right-4 z-40 max-w-7xl mx-auto fade-in">
-                        <div class="bg-gray-900 text-white rounded-xl shadow-2xl p-4 flex justify-between items-center cursor-pointer hover:bg-gray-800 transition" onclick="toggleModal('checkout-modal', true)">
-                            <div class="flex items-center gap-4">
-                                <div class="bg-orange-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow">${db.cart.length}</div>
-                                <div class="flex flex-col"><span class="text-xs text-gray-400">小計</span><span class="font-bold text-lg">$${total}</span></div>
-                            </div>
-                            <div class="flex items-center gap-2 font-bold text-sm bg-white text-gray-900 px-4 py-2 rounded-lg">送出訂單 <i class="fa-solid fa-chevron-right text-xs"></i></div>
-                        </div>
-                    </div>
-                `;
+                html += `<div class="fixed bottom-4 left-4 right-4 z-40 max-w-7xl mx-auto fade-in"><div class="bg-gray-900 text-white rounded-xl shadow-2xl p-4 flex justify-between items-center cursor-pointer hover:bg-gray-800 transition" onclick="toggleModal('checkout-modal', true)"><div class="flex items-center gap-4"><div class="bg-orange-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow">${db.cart.length}</div><div class="flex flex-col"><span class="text-xs text-gray-400">小計</span><span class="font-bold text-lg">$${total}</span></div></div><div class="flex items-center gap-2 font-bold text-sm bg-white text-gray-900 px-4 py-2 rounded-lg">送出訂單 <i class="fa-solid fa-chevron-right text-xs"></i></div></div></div>`;
             }
             container.innerHTML = html;
         }
 
-        function filterCategory(id) { window.RestaurantDB.uiState.activeCategory = id; renderAll(); }
-        function toggleCard(id) { 
-            const db = window.RestaurantDB; 
-            db.uiState.expandedCardId = db.uiState.expandedCardId === id ? null : id;
-            if (db.uiState.expandedCardId && !db.uiState.tempSelections[id]) db.uiState.tempSelections[id] = { comboType: 'none', choices: {} };
-            renderAll(); 
+        // --- Admin & Floor Plan Editor ---
+        let dragSrcEl = null;
+
+        function startDrag(e, id) {
+            if (!window.RestaurantDB.uiState.isEditingMap) return;
+            dragSrcEl = id;
         }
-        function selectCombo(id, cid) {
-            const db = window.RestaurantDB;
-            const needs = db.combos[cid].needs;
-            const defaults = {};
-            needs.forEach(c => defaults[c] = db.optionPool[c][0]);
-            db.uiState.tempSelections[id] = { comboType: cid, choices: defaults };
-            renderAll();
-        }
-        function renderSubOptions(itemId, comboId) {
-            const db = window.RestaurantDB;
-            const combo = db.combos[comboId];
-            if (!combo || combo.needs.length === 0) return '';
-            const choices = db.uiState.tempSelections[itemId]?.choices || {};
-            const names = { drink: '飲品', dessert: '甜點', soup: '湯品', salad: '沙拉', bread: '麵包' };
-            return `<div class="space-y-4">` + combo.needs.map(cat => `
-                <div><p class="text-xs text-gray-500 font-bold mb-2 uppercase">${names[cat]}</p>
-                <div class="grid grid-cols-2 gap-2">${db.optionPool[cat].map(opt => `
-                    <label class="cursor-pointer"><input type="radio" name="opt-${itemId}-${cat}" value="${opt}" class="peer sr-only" ${choices[cat]===opt?'checked':''} onchange="selectSubOption(${itemId}, '${cat}', '${opt}')">
-                    <div class="text-center py-2 px-1 text-xs border rounded peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 bg-white text-gray-600 border-gray-200 hover:bg-gray-50">${opt}</div></label>
-                `).join('')}</div></div>`).join('') + `</div>`;
-        }
-        function selectSubOption(id, cat, val) { 
-            window.RestaurantDB.uiState.tempSelections[id].choices[cat] = val;
-            saveDB();
-        }
-        
-        function addToCart(id) {
-            const db = window.RestaurantDB;
-            const item = db.menu.find(m => m.id === id);
-            const sel = db.uiState.tempSelections[id];
-            if(!sel) return;
-            const combo = db.combos[sel.comboType];
-            db.cart.push({ id: Date.now(), name: item.name, basePrice: item.price, comboName: combo.name, comboPrice: combo.price, itemTotal: item.price + combo.price, subItems: Object.values(sel.choices) });
-            db.uiState.expandedCardId = null;
+
+        function onDrop(e) {
+            if (!dragSrcEl) return;
+            const container = document.getElementById('floor-plan-area');
+            const rect = container.getBoundingClientRect();
+            let x = e.clientX - rect.left - 40;
+            let y = e.clientY - rect.top - 40;
+            if (x < 0) x = 0;
+            if (y < 0) y = 0;
+            if (x > rect.width - 80) x = rect.width - 80;
+            if (y > rect.height - 80) y = rect.height - 80;
+            window.RestaurantDB.tables[dragSrcEl].x = x;
+            window.RestaurantDB.tables[dragSrcEl].y = y;
+            dragSrcEl = null;
             renderAll();
         }
 
-        function updateCheckoutModal() {
-            const db = window.RestaurantDB;
-            const con = document.getElementById('modal-order-items');
-            if(db.cart.length===0) { con.innerHTML = ''; return; }
-            let h = '', t=0;
-            db.cart.forEach(i => { 
-                t += i.itemTotal; 
-                h += `
-                    <div class="py-3 border-b border-gray-100 last:border-0">
-                        <div class="flex justify-between items-baseline">
-                            <div class="font-bold text-gray-800 text-lg">${i.name}</div>
-                            <div class="font-mono text-gray-600">$${i.basePrice}</div>
-                        </div>
-                        ${i.comboPrice > 0 ? `
-                            <div class="flex justify-between items-center text-sm text-orange-600 mt-1 bg-orange-50 px-2 py-1 rounded">
-                                <span><i class="fa-solid fa-plus text-xs mr-1"></i>${i.comboName}</span>
-                                <span>+$${i.comboPrice}</span>
-                            </div>
-                        ` : ''}
-                        ${i.subItems.length > 0 ? `
-                            <div class="text-xs text-gray-400 mt-1 pl-1">
-                                ${i.subItems.join(' / ')}
-                            </div>
-                        ` : ''}
-                    </div>
-                `; 
-            });
-            con.innerHTML = h; document.getElementById('modal-total-price').innerText = `$${t}`;
-        }
-
-        function processPayment() {
-            const db = window.RestaurantDB;
-            const tId = db.currentTableId;
-            const table = db.tables[tId];
-            const total = db.cart.reduce((s,i)=>s+i.itemTotal, 0);
-            if (table.status !== 'dining') {
-                table.status = 'dining';
-                table.startTime = Date.now();
-            }
-            table.orderCount += 1;
-            table.totalAmount += total;
-            db.orders.push({
-                id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
-                tableId: tId,
-                timestamp: Date.now(),
-                status: 'pending',
-                items: JSON.parse(JSON.stringify(db.cart)),
-                total: total
-            });
-            db.cart = [];
-            toggleModal('checkout-modal', false);
-            alert(`點餐成功！\n桌號: ${table.name}\n訂單已送出。`);
-            switchView('customer');
-        }
-
+        // --- 補回 renderKitchenView ---
         function renderKitchenView(container) {
             const db = window.RestaurantDB;
             const pending = db.orders.filter(o => o.status === 'pending').sort((a,b) => a.timestamp - b.timestamp);
@@ -613,9 +490,14 @@
                                 </div>
                                 <span class="text-2xl font-mono font-bold ${urgent ? 'text-red-500 animate-pulse' : 'text-green-400'}">${mins}m</span>
                             </div>
-                            <div class="space-y-4">${o.items.map(i => `<div class="text-sm"><div class="text-white font-bold text-lg">${i.name}</div>${i.comboName!=='單點'?`<div class="ml-2 pl-2 border-l-2 border-gray-600 mt-1"><div class="text-orange-400 text-xs font-bold">[${i.comboName}]</div><div class="text-gray-300 text-xs">${i.subItems.join(', ')}</div></div>`:''}</div>`).join('')}</div>
+                            <div class="space-y-4">${o.items.map(i => `<div class="text-sm"><div class="text-white font-bold text-lg">${i.name}</div>${i.comboName!=='單點'?`<div class="ml-2 pl-2 border-l-2 border-gray-600 mt-1"><div class="text-orange-400 text-xs font-bold">[${i.comboName}]</div><div class="text-gray-300 text-xs">${i.subItems.join(', ')}</div></div>`:''}
+                            ${i.note ? `<div class="mt-1 text-yellow-400 text-xs"><i class="fa-solid fa-pen mr-1"></i>${i.note}</div>` : ''}
+                            </div>`).join('')}</div>
                         </div>
-                        <button onclick="completeOrder('${o.id}')" class="mt-6 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded text-lg transition">DONE</button>
+                        <div class="mt-6 flex gap-2">
+                            <button onclick="cancelOrder('${o.id}')" class="flex-1 bg-red-900 hover:bg-red-800 text-red-200 font-bold py-3 rounded text-lg transition">取消</button>
+                            <button onclick="completeOrder('${o.id}')" class="flex-[2] bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded text-lg transition">DONE</button>
+                        </div>
                     </div>
                 `;
             });
@@ -623,6 +505,7 @@
             container.innerHTML = html;
         }
 
+        // --- 補回 completeOrder ---
         function completeOrder(id) {
             const db = window.RestaurantDB;
             const o = db.orders.find(x => x.id === id);
@@ -632,7 +515,8 @@
         function renderAdminView(container) {
             const db = window.RestaurantDB;
             const tab = db.uiState.adminTab;
-            const serviceRequests = Object.values(db.tables).filter(t => t.serviceStatus);
+            const isEditing = db.uiState.isEditingMap;
+
             let html = `
                 <div class="bg-white border-b mb-6 sticky top-0 z-30">
                     <div class="max-w-4xl mx-auto flex items-center justify-between pr-4">
@@ -644,165 +528,173 @@
                         <button onclick="resetDemo()" class="ml-4 bg-red-100 text-red-600 text-xs px-3 py-1 rounded-full hover:bg-red-200 font-bold border border-red-200">重置Demo</button>
                     </div>
                 </div>
-                <div class="max-w-4xl mx-auto p-4">
+                <div class="max-w-4xl mx-auto p-4 flex-1 flex flex-col">
             `;
-            if (serviceRequests.length > 0) {
+
+            if (tab === 'tables') {
                 html += `
-                    <div class="mb-6 bg-yellow-50 border border-yellow-200 p-4 rounded-lg flex items-center justify-between animate-pulse">
-                        <div class="flex items-center gap-3 text-yellow-800">
-                            <i class="fa-solid fa-bell text-xl"></i>
-                            <span class="font-bold">有 ${serviceRequests.length} 桌正在呼叫服務！</span>
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="text-sm text-gray-500">
+                            ${isEditing ? '💡 拖曳桌子移動位置，雙擊修改名稱，長按刪除' : '即時監控模式 (Monitor Mode)'}
                         </div>
                         <div class="flex gap-2">
-                            ${serviceRequests.map(t => `<span class="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs font-bold">${t.name}: ${t.serviceStatus}</span>`).join('')}
+                            ${isEditing ? `
+                                <button onclick="addTable('round')" class="bg-blue-100 text-blue-600 px-3 py-1 rounded text-xs font-bold">+圓桌</button>
+                                <button onclick="addTable('square')" class="bg-blue-100 text-blue-600 px-3 py-1 rounded text-xs font-bold">+方桌</button>
+                                <button onclick="addTable('rect')" class="bg-blue-100 text-blue-600 px-3 py-1 rounded text-xs font-bold">+長桌</button>
+                                <button onclick="toggleEditMap()" class="bg-green-500 text-white px-4 py-1 rounded shadow text-xs font-bold">完成</button>
+                            ` : `
+                                <button onclick="toggleEditMap()" class="bg-gray-800 text-white px-4 py-1 rounded shadow text-xs font-bold"><i class="fa-solid fa-pen-to-square mr-1"></i>編輯排位</button>
+                            `}
                         </div>
                     </div>
+                    
+                    <div id="floor-plan-area" 
+                        class="floor-plan-container flex-1 bg-white rounded-xl border border-gray-300 shadow-inner w-full min-h-[500px]"
+                        ondragover="event.preventDefault()" 
+                        ondrop="onDrop(event)"
+                        onclick="if(window.RestaurantDB.uiState.isEditingMap) onDrop(event)" 
+                        >
+                        ${Object.values(db.tables).map(t => renderTableNode(t, isEditing)).join('')}
+                    </div>
                 `;
-            }
-            if (tab === 'dashboard') {
+            } else if (tab === 'dashboard') {
                 const revenue = db.orders.filter(o => o.status === 'served').reduce((s,o)=>s+o.total, 0);
                 const count = db.orders.filter(o => o.status === 'served').length;
-                
-                // 計算熱銷商品
                 const itemCounts = {};
-                db.orders.forEach(o => {
-                    o.items.forEach(i => {
-                        itemCounts[i.name] = (itemCounts[i.name] || 0) + 1;
-                    });
-                });
-                const sortedItems = Object.entries(itemCounts)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 5);
+                db.orders.forEach(o => { o.items.forEach(i => { itemCounts[i.name] = (itemCounts[i.name] || 0) + 1; }); });
+                const sortedItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
                 const maxCount = sortedItems.length > 0 ? sortedItems[0][1] : 1;
 
                 html += `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        <div class="bg-white p-6 rounded-xl shadow border-l-4 border-green-500">
-                            <h3 class="text-gray-500 text-sm font-bold uppercase">今日營收</h3>
-                            <p class="text-4xl font-bold mt-2">$${revenue.toLocaleString()}</p>
-                        </div>
-                        <div class="bg-white p-6 rounded-xl shadow border-l-4 border-blue-500">
-                            <h3 class="text-gray-500 text-sm font-bold uppercase">出餐數</h3>
-                            <p class="text-4xl font-bold mt-2">${count}</p>
-                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow border-l-4 border-green-500"><h3 class="text-gray-500 text-sm font-bold uppercase">今日營收</h3><p class="text-4xl font-bold mt-2">$${revenue.toLocaleString()}</p></div>
+                        <div class="bg-white p-6 rounded-xl shadow border-l-4 border-blue-500"><h3 class="text-gray-500 text-sm font-bold uppercase">出餐數</h3><p class="text-4xl font-bold mt-2">${count}</p></div>
                     </div>
-
-                    <!-- 熱銷排行榜 Chart -->
-                    <div class="bg-white p-6 rounded-xl shadow">
-                        <h3 class="font-bold text-lg text-gray-800 mb-4 border-b pb-2">🔥 熱銷商品排行榜</h3>
-                        <div class="space-y-4">
-                            ${sortedItems.length === 0 ? '<p class="text-gray-400">暫無數據</p>' : sortedItems.map(([name, val]) => `
-                                <div>
-                                    <div class="flex justify-between text-sm mb-1">
-                                        <span class="font-medium text-gray-700">${name}</span>
-                                        <span class="font-bold text-gray-900">${val} 份</span>
-                                    </div>
-                                    <div class="w-full bg-gray-100 rounded-full h-2.5">
-                                        <div class="bg-orange-500 h-2.5 rounded-full" style="width: ${(val / maxCount) * 100}%"></div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow"><h3 class="font-bold text-lg text-gray-800 mb-4 border-b pb-2">🔥 熱銷商品排行榜</h3><div class="space-y-4">
+                        ${sortedItems.length === 0 ? '<p class="text-gray-400">暫無數據</p>' : sortedItems.map(([name, val]) => `<div><div class="flex justify-between text-sm mb-1"><span class="font-medium text-gray-700">${name}</span><span class="font-bold text-gray-900">${val} 份</span></div><div class="w-full bg-gray-100 rounded-full h-2.5"><div class="bg-orange-500 h-2.5 rounded-full" style="width: ${(val / maxCount) * 100}%"></div></div></div>`).join('')}
+                    </div></div>
                 `;
-            } else if (tab === 'tables') {
-                const now = Date.now();
-                const limit = 90 * 60 * 1000;
-                html += `<div class="grid grid-cols-2 md:grid-cols-3 gap-6">`;
-                Object.values(db.tables).forEach(t => {
-                    let timerHtml = '<span class="text-gray-400">未計時</span>';
-                    let statusClass = 'table-empty';
-                    let timeLeftMin = 0;
-                    let serviceIcon = '';
-                    if (t.serviceStatus === 'water') serviceIcon = '<div class="absolute -top-2 -right-2 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-lg service-calling"><i class="fa-solid fa-glass-water"></i></div>';
-                    if (t.serviceStatus === 'staff') serviceIcon = '<div class="absolute -top-2 -right-2 w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center shadow-lg service-calling"><i class="fa-solid fa-bell-concierge"></i></div>';
-                    if (t.serviceStatus === 'checkout') serviceIcon = '<div class="absolute -top-2 -right-2 w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg service-calling"><i class="fa-solid fa-wallet"></i></div>';
-                    if (t.status === 'dining' && t.startTime) {
-                        const elapsed = now - t.startTime;
-                        const remaining = limit - elapsed;
-                        timeLeftMin = Math.ceil(remaining / 60000);
-                        if (remaining <= 0) {
-                            statusClass = 'table-urgent';
-                            timerHtml = `<span class="text-red-600 font-bold text-xl"><i class="fa-solid fa-triangle-exclamation"></i> 超時 ${Math.abs(timeLeftMin)} 分</span>`;
-                        } else if (remaining < 15 * 60 * 1000) {
-                            statusClass = 'table-urgent';
-                            timerHtml = `<span class="text-red-500 font-bold text-xl">${timeLeftMin} min</span>`;
-                        } else {
-                            statusClass = 'table-dining';
-                            timerHtml = `<span class="text-green-600 font-bold text-xl">${timeLeftMin} min</span>`;
-                        }
-                    } else if (t.status === 'seated') {
-                        statusClass = 'table-seated';
-                        timerHtml = '<span class="text-blue-500">點餐中...</span>';
-                    }
-                    html += `
-                        <div class="${statusClass} rounded-xl p-4 flex flex-col justify-between h-40 shadow-sm relative transition-all group">
-                            ${serviceIcon}
-                            <div class="flex justify-between items-start">
-                                <h4 class="font-bold text-xl">${t.name}</h4>
-                                <div class="flex flex-col gap-1 items-end">
-                                    ${t.status !== 'empty' ? `<button onclick="clearTable('${t.id}')" class="text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-red-50 text-gray-500 hover:text-red-500">清桌</button>` : ''}
-                                    ${t.serviceStatus ? `<button onclick="resolveService('${t.id}')" class="text-xs bg-gray-800 text-white px-2 py-1 rounded hover:bg-gray-700 shadow">完成服務</button>` : ''}
-                                </div>
-                            </div>
-                            <div class="flex flex-col items-center justify-center flex-1">
-                                ${timerHtml}
-                                ${t.status !== 'empty' ? `<p class="text-xs mt-1 font-medium">累積金額: $${t.totalAmount}</p>` : ''}
-                                ${t.status !== 'empty' ? `<p class="text-xs text-gray-500">${t.orderCount} 張單</p>` : ''}
-                            </div>
-                            ${t.status === 'empty' ? '<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black bg-opacity-5 transition cursor-pointer" onclick="openTable(\''+t.id+'\')"><span class="bg-white px-3 py-1 rounded shadow text-sm font-bold">手動開桌</span></div>' : ''}
-                        </div>
-                    `;
-                });
-                html += `</div>`;
-            } else if (tab === 'menu') {
-                html += `
-                    <div class="bg-white rounded-xl shadow overflow-hidden">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">餐點名稱</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">價格</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">狀態 (上架/售完)</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                ${db.menu.map(item => `
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center gap-3">
-                                            <div class="w-10 h-10 rounded overflow-hidden relative bg-gray-100">
-                                                <img src="${item.image}" onerror="handleImageError(this, '${item.emoji}')" class="w-full h-full object-cover">
-                                            </div>
-                                            ${item.name}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$${item.price}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                            <button onclick="toggleItemAvailability(${item.id})" 
-                                                class="px-3 py-1 rounded-full text-xs font-bold border transition ${item.available ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}">
-                                                ${item.available ? '販售中' : '已售完'}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
+            } else {
+                html += `<div class="bg-white rounded-xl shadow overflow-hidden"><table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">餐點名稱</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">價格</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">狀態</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">${db.menu.map(item => `<tr><td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center gap-3"><div class="w-10 h-10 rounded overflow-hidden flex items-center justify-center bg-orange-50 text-2xl">${item.emoji}</div>${item.name}</td><td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$${item.price}</td><td class="px-6 py-4 whitespace-nowrap text-sm"><button onclick="toggleItemAvailability(${item.id})" class="px-3 py-1 rounded-full text-xs font-bold border transition ${item.available ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}">${item.available ? '販售中' : '已售完'}</button></td></tr>`).join('')}</tbody></table></div>`;
             }
+
             html += `</div>`;
             container.innerHTML = html;
         }
 
-        function setAdminTab(t) { window.RestaurantDB.uiState.adminTab = t; renderAll(); }
-        function toggleItemAvailability(itemId) {
-            const item = window.RestaurantDB.menu.find(m => m.id === itemId);
-            if (item) {
-                item.available = !item.available;
+        function renderTableNode(t, isEditing) {
+            const shapes = {
+                'round': 'rounded-full w-20 h-20',
+                'square': 'rounded-lg w-20 h-20',
+                'rect': 'rounded-lg w-32 h-20'
+            };
+            const statusColors = {
+                'empty': 'bg-white border-2 border-gray-300 text-gray-500',
+                'seated': 'bg-blue-100 border-2 border-blue-500 text-blue-700',
+                'dining': 'bg-green-100 border-2 border-green-500 text-green-700',
+                'urgent': 'bg-red-100 border-2 border-red-500 text-red-700 animate-pulse'
+            };
+            
+            let colorClass = statusColors.empty;
+            let infoHtml = '';
+            
+            if (!isEditing) {
+                if (t.status === 'dining') {
+                    const now = Date.now();
+                    const limit = 90 * 60 * 1000;
+                    const elapsed = t.startTime ? now - t.startTime : 0;
+                    const remaining = limit - elapsed;
+                    
+                    if (remaining <= 0 || remaining < 15 * 60 * 1000) colorClass = statusColors.urgent;
+                    else colorClass = statusColors.dining;
+                    
+                    const min = Math.ceil(remaining / 60000);
+                    infoHtml = `<div class="text-[10px] font-bold">${min}m</div><div class="text-[10px]">$${t.totalAmount}</div>`;
+                } else if (t.status === 'seated') {
+                    colorClass = statusColors.seated;
+                    infoHtml = `<div class="text-[10px]">點餐中</div>`;
+                } else {
+                    infoHtml = `<div class="text-[10px] opacity-50">${t.seats}人</div>`;
+                }
+            } else {
+                infoHtml = `<div class="text-[10px] text-gray-400">移動</div>`;
+            }
+
+            const serviceIcon = t.serviceStatus ? `<div class="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow service-calling text-xs">🔔</div>` : '';
+
+            return `
+                <div class="table-node absolute flex flex-col items-center justify-center shadow-sm ${shapes[t.type]} ${colorClass} ${isEditing ? 'table-editing' : ''}" 
+                    style="left: ${t.x}px; top: ${t.y}px;"
+                    onmousedown="startDrag(event, '${t.id}')"
+                    ondblclick="${isEditing ? `editTable('${t.id}')` : `openTableOptions('${t.id}')`}"
+                >
+                    ${serviceIcon}
+                    <div class="font-bold leading-none pointer-events-none">${t.name}</div>
+                    <div class="pointer-events-none">${infoHtml}</div>
+                    ${isEditing ? `<div class="absolute -bottom-6 bg-red-100 text-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs cursor-pointer" onclick="deleteTable('${t.id}')">×</div>` : ''}
+                </div>
+            `;
+        }
+
+        function toggleEditMap() {
+            const db = window.RestaurantDB;
+            db.uiState.isEditingMap = !db.uiState.isEditingMap;
+            renderAll();
+        }
+
+        function addTable(type) {
+            const db = window.RestaurantDB;
+            const id = 'T' + Date.now();
+            db.tables[id] = {
+                id: id,
+                name: '新桌',
+                type: type,
+                x: 100, y: 100,
+                seats: type === 'round' ? 2 : (type === 'rect' ? 6 : 4),
+                status: 'empty',
+                serviceStatus: null,
+                orderCount: 0,
+                totalAmount: 0
+            };
+            renderAll();
+        }
+
+        function editTable(id) {
+            const newName = prompt('請輸入桌號名稱', window.RestaurantDB.tables[id].name);
+            if (newName) {
+                window.RestaurantDB.tables[id].name = newName;
                 renderAll();
             }
         }
+
+        function deleteTable(id) {
+            if(confirm('確定刪除此桌位？')) {
+                delete window.RestaurantDB.tables[id];
+                renderAll();
+            }
+        }
+
+        function openTableOptions(tid) {
+            const t = window.RestaurantDB.tables[tid];
+            if (t.status === 'empty') {
+                if(confirm(`是否開啟 ${t.name}？`)) openTable(tid);
+            } else {
+                if(confirm(`是否清空 ${t.name} (結帳離場)？`)) clearTable(tid);
+            }
+        }
+
+        // --- Helpers ---
+        function filterCategory(id) { window.RestaurantDB.uiState.activeCategory = id; renderAll(); }
+        function toggleCard(id) { 
+            const db = window.RestaurantDB; 
+            db.uiState.expandedCardId = db.uiState.expandedCardId === id ? null : id;
+            if (db.uiState.expandedCardId && !db.uiState.tempSelections[id]) db.uiState.tempSelections[id] = { comboType: 'none', choices: {}, note: null };
+            renderAll(); 
+        }
+        function setAdminTab(t) { window.RestaurantDB.uiState.adminTab = t; renderAll(); }
+        function toggleItemAvailability(itemId) { const item = window.RestaurantDB.menu.find(m => m.id === itemId); if (item) { item.available = !item.available; renderAll(); } }
         function clearTable(tid) {
-            if(!confirm('確認客人已買單離場，要清空桌位嗎？')) return;
             const t = window.RestaurantDB.tables[tid];
             t.status = 'empty'; t.startTime = null; t.orderCount = 0; t.totalAmount = 0; t.serviceStatus = null;
             renderAll();
@@ -812,11 +704,50 @@
             t.status = 'seated';
             renderAll();
         }
-        function resolveService(tid) {
-            const t = window.RestaurantDB.tables[tid];
-            t.serviceStatus = null;
+        function showTableSelectModal() {
+            const grid = document.getElementById('table-select-grid');
+            const db = window.RestaurantDB;
+            grid.innerHTML = Object.values(db.tables).map(t => `
+                <button onclick="selectTable('${t.id}')" class="p-3 border rounded-lg hover:bg-orange-50 hover:border-orange-500 transition flex flex-col items-center gap-1 bg-white relative overflow-hidden">
+                    <span class="font-bold text-lg">${t.name}</span>
+                    <span class="text-xs ${t.status === 'empty' ? 'text-green-500' : 'text-blue-500'}">${t.status === 'empty' ? '空桌' : '用餐中'}</span>
+                </button>
+            `).join('');
+            document.getElementById('table-select-modal').classList.remove('hidden');
+        }
+        function selectTable(tableId) {
+            const db = window.RestaurantDB;
+            db.currentTableId = tableId;
+            document.getElementById('table-select-modal').classList.add('hidden');
+            if (db.tables[tableId].status === 'empty') db.tables[tableId].status = 'seated';
             renderAll();
         }
+
+        // 新增：取消已送出的訂單
+        function cancelOrder(orderId) {
+            if(!confirm('確定要取消這筆訂單嗎？')) return;
+            const db = window.RestaurantDB;
+            const orderIndex = db.orders.findIndex(o => o.id === orderId);
+            
+            if (orderIndex > -1) {
+                const order = db.orders[orderIndex];
+                
+                // 扣除桌位金額
+                if (db.tables[order.tableId]) {
+                    db.tables[order.tableId].totalAmount -= order.total;
+                    db.tables[order.tableId].orderCount -= 1;
+                    if(db.tables[order.tableId].totalAmount < 0) db.tables[order.tableId].totalAmount = 0;
+                }
+
+                // 移除訂單
+                db.orders.splice(orderIndex, 1);
+                
+                alert('訂單已取消');
+                renderAll(); // 全局刷新
+                updateHistoryModal(); // 刷新 Modal 內容
+            }
+        }
+
         initApp();
     </script>
 </body>
