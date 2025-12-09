@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#f97316">
-    <title>三口ㄜ ˋ了點餐系統Pro</title>
+    <title>三口ㄜ ˋ了點餐系統Pro (佈局重構版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -30,7 +30,6 @@
         .floor-plan-container {
             background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
             background-size: 20px 20px;
-            /* 移除 overflow:hidden 以免擋住邊緣的刪除按鈕 */
             position: relative;
             touch-action: none;
         }
@@ -39,17 +38,17 @@
         .table-editing { cursor: grab; border: 2px dashed #f97316 !important; }
         .table-editing:active { cursor: grabbing; border: 2px solid #f97316 !important; }
         
-        /* 刪除按鈕樣式 */
         .delete-btn { 
             cursor: pointer; 
-            pointer-events: auto; /* 確保能接收點擊 */
+            pointer-events: auto;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 20;
         }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 h-screen flex flex-col overflow-hidden">
 
-    <!-- 頂部導航 -->
+    <!-- 頂部導航 (固定高度) -->
     <nav class="bg-white shadow-md z-50 flex-none relative">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between items-center h-16">
@@ -57,7 +56,7 @@
                     <i class="fa-solid fa-utensils text-orange-500 text-2xl"></i>
                     <div class="flex flex-col leading-none">
                         <span class="font-bold text-xl tracking-wider">三口ㄜ ˋ了<span class="text-orange-500">點餐系統Pro</span></span>
-                        <span class="text-[10px] text-gray-400 font-mono">v202512092023-HotFix</span>
+                        <span class="text-[10px] text-gray-400 font-mono">v202512092210-LayoutFix</span>
                     </div>
                 </div>
                 
@@ -79,7 +78,12 @@
         </div>
     </nav>
 
-    <!-- 主內容區域 -->
+    <!-- [架構修正] 分類導覽列：獨立於 scroll view 之外，永遠固定 -->
+    <div id="category-bar-container" class="hidden z-40 bg-white border-b shadow-sm relative flex-none w-full">
+        <!-- 內容由 JS 動態注入 -->
+    </div>
+
+    <!-- 主內容區域 (可捲動區域) -->
     <main id="app-container" class="flex-1 overflow-y-auto relative scroll-smooth bg-gray-50 flex flex-col"></main>
 
     <!-- Modal 區域 -->
@@ -99,11 +103,18 @@
             </div>
             <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"></div>
             <div class="p-4 bg-white border-t border-gray-200">
-                <div class="flex justify-between items-end">
-                    <span class="text-gray-500 text-sm">目前累計金額</span>
-                    <span id="history-total" class="text-2xl font-bold text-gray-900">$0</span>
+                <div class="flex justify-between items-end mb-1">
+                    <span class="text-gray-500 text-sm">小計</span>
+                    <span id="history-subtotal" class="font-bold text-gray-800">$0</span>
                 </div>
-                <p class="text-xs text-right text-gray-400 mt-1">*尚未包含 10% 服務費</p>
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-gray-500 text-sm">服務費 (10%)</span>
+                    <span id="history-service-fee" class="font-bold text-gray-800">$0</span>
+                </div>
+                <div class="flex justify-between items-end border-t pt-2">
+                    <span class="text-gray-900 font-bold">總計</span>
+                    <span id="history-total" class="text-2xl font-bold text-orange-600">$0</span>
+                </div>
             </div>
         </div>
     </div>
@@ -135,11 +146,14 @@
     </div>
 
     <script>
-        // --- 核心工具：圖片容錯 ---
-        function handleImageError(img, emoji) {
+        // --- 核心工具 ---
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5).toUpperCase();
+        }
+
+        function handleImageError(img) {
             img.onerror = null; 
-            img.style.display = 'none'; // 隱藏破圖
-            // 顯示下方的 emoji (透過 HTML 結構控制)
+            img.style.display = 'none'; 
         }
 
         // --- 1. 資料結構 ---
@@ -168,31 +182,19 @@
                 bread: ['香蒜麵包', '奶油餐包']
             },
             menu: [
-                // Pasta
                 { id: 101, category: 'pasta', name: '奶油培根義大利麵', desc: '濃厚白醬配上煙燻培根', price: 220, image: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍝', available: true, allowCombo: true, modifiers: ['加辣', '不要起司', '麵硬'] },
                 { id: 102, category: 'pasta', name: '青醬蛤蠣義大利麵', desc: '新鮮羅勒與大顆蛤蠣', price: 240, image: 'https://images.unsplash.com/photo-1626844131082-256783844137?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🌿', available: true, allowCombo: true, modifiers: ['加辣', '不要蒜'] },
                 { id: 103, category: 'pasta', name: '番茄肉醬義大利麵', desc: '經典波隆那肉醬', price: 200, image: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍅', available: true, allowCombo: true, modifiers: ['加辣', '加起司'] },
                 { id: 104, category: 'pasta', name: '墨魚海鮮義大利麵', desc: '新鮮墨魚汁與透抽', price: 280, image: 'https://images.unsplash.com/photo-1608219992759-8d74ed8d76eb?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🦑', available: true, allowCombo: true, modifiers: ['加辣'] },
-                // Risotto
                 { id: 201, category: 'risotto', name: '松露野菇燉飯', desc: '進口松露油與綜合野菇', price: 280, image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍄', available: true, allowCombo: true, modifiers: ['飯軟', '飯硬'] },
                 { id: 202, category: 'risotto', name: '海鮮番茄燉飯', desc: '酸甜茄汁與綜合海鮮', price: 300, image: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🦐', available: true, allowCombo: true, modifiers: ['飯軟', '飯硬', '加辣'] },
                 { id: 203, category: 'risotto', name: '南瓜雞肉燉飯', desc: '濃郁南瓜醬與嫩雞胸', price: 260, image: 'https://images.unsplash.com/photo-1595295333158-4742f28fbd85?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🎃', available: true, allowCombo: true, modifiers: ['飯軟', '飯硬'] },
-                { id: 204, category: 'risotto', name: '奶油鮭魚燉飯', desc: '挪威鮭魚與白醬', price: 320, image: 'https://images.unsplash.com/photo-1634861803736-23c28df776fa?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🐟', available: true, allowCombo: true, modifiers: ['飯軟', '飯硬'] },
-                // Steak
                 { id: 301, category: 'steak', name: '紐約客牛排', desc: '10oz 嚴選部位，多汁軟嫩', price: 580, image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🥩', available: true, allowCombo: true, modifiers: ['三分熟', '五分熟', '七分熟', '全熟', '黑胡椒醬', '蘑菇醬'] },
                 { id: 302, category: 'steak', name: '菲力牛排', desc: '8oz 最軟嫩部位', price: 780, image: 'https://images.unsplash.com/photo-1615937657715-bc7b4b7962c1?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍖', available: true, allowCombo: true, modifiers: ['三分熟', '五分熟', '七分熟', '全熟', '玫瑰鹽'] },
-                { id: 303, category: 'steak', name: '肋眼牛排', desc: '12oz 油脂豐富', price: 980, image: 'https://images.unsplash.com/photo-1546964124-0cce460f38ef?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🥩', available: true, allowCombo: true, modifiers: ['三分熟', '五分熟', '七分熟', '全熟'] },
-                { id: 304, category: 'steak', name: '法式羊排', desc: '紐西蘭小羔羊', price: 680, image: 'https://images.unsplash.com/photo-1606756790138-7c4854964654?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍖', available: true, allowCombo: true, modifiers: ['七分熟', '全熟', '薄荷醬'] },
-                // Drinks
                 { id: 401, category: 'drink', name: '特調水果茶', desc: '新鮮水果切片', price: 120, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍹', available: true, allowCombo: false, modifiers: ['正常冰', '少冰', '去冰', '正常糖', '半糖', '微糖'] },
                 { id: 402, category: 'drink', name: '珍珠奶茶', desc: 'Q彈珍珠', price: 100, image: 'https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🧋', available: true, allowCombo: false, modifiers: ['正常冰', '少冰', '去冰', '正常糖', '半糖', '微糖'] },
-                { id: 403, category: 'drink', name: '美式咖啡', desc: '深烘焙豆', price: 90, image: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?auto=format&fit=crop&w=400&h=400&q=80', emoji: '☕', available: true, allowCombo: false, modifiers: ['熱', '冰', '不加糖', '加糖'] },
-                { id: 404, category: 'drink', name: '拿鐵咖啡', desc: '香濃牛奶', price: 110, image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🥛', available: true, allowCombo: false, modifiers: ['熱', '冰', '少冰', '去冰'] },
-                // Desserts
                 { id: 501, category: 'dessert', name: '熔岩巧克力蛋糕', desc: '現烤熱蛋糕', price: 150, image: 'https://images.unsplash.com/photo-1624353365286-3f8d62daad51?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍫', available: true, allowCombo: false, modifiers: ['餐後上', '先上'] },
-                { id: 502, category: 'dessert', name: '重乳酪蛋糕', desc: '濃郁口感', price: 120, image: 'https://images.unsplash.com/photo-1567327613485-fbc7bf196198?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍰', available: true, allowCombo: false, modifiers: ['餐後上', '先上'] },
-                { id: 503, category: 'dessert', name: '提拉米蘇', desc: '義式經典', price: 140, image: 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🎂', available: true, allowCombo: false, modifiers: ['餐後上', '先上'] },
-                { id: 504, category: 'dessert', name: '法式檸檬塔', desc: '酸甜清爽', price: 130, image: 'https://images.unsplash.com/photo-1519915028121-7d3463d20b13?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍋', available: true, allowCombo: false, modifiers: ['餐後上', '先上'] }
+                { id: 502, category: 'dessert', name: '重乳酪蛋糕', desc: '濃郁口感', price: 120, image: 'https://images.unsplash.com/photo-1567327613485-fbc7bf196198?auto=format&fit=crop&w=400&h=400&q=80', emoji: '🍰', available: true, allowCombo: false, modifiers: ['餐後上', '先上'] }
             ],
             categories: [
                 { id: 'all', name: '全部' },
@@ -212,26 +214,36 @@
             }
         };
 
+        let lastKitchenDataHash = '';
+        let isRenderBlocked = false;
+
         function loadDB() {
             const saved = localStorage.getItem('gourmetOS_v2');
             if (saved) {
-                window.RestaurantDB = JSON.parse(saved);
-                window.RestaurantDB.uiState = DEFAULT_DB.uiState;
-                const defaultKeys = Object.keys(DEFAULT_DB.tables);
-                Object.values(window.RestaurantDB.tables).forEach((t, i) => {
-                    if (t.x === undefined) {
-                        const def = DEFAULT_DB.tables[defaultKeys[i]] || {x:50, y:50, type:'square'};
-                        t.x = def.x; t.y = def.y; t.type = def.type;
-                    }
-                });
-                window.RestaurantDB.menu = DEFAULT_DB.menu; 
+                const parsed = JSON.parse(saved);
+                window.RestaurantDB = { ...DEFAULT_DB, ...parsed };
+                if(!window.RestaurantDB.uiState) window.RestaurantDB.uiState = JSON.parse(JSON.stringify(DEFAULT_DB.uiState));
+                
+                window.RestaurantDB.menu = DEFAULT_DB.menu;
+                window.RestaurantDB.categories = DEFAULT_DB.categories; 
+                window.RestaurantDB.combos = DEFAULT_DB.combos;
+                window.RestaurantDB.optionPool = DEFAULT_DB.optionPool;
             } else {
                 window.RestaurantDB = JSON.parse(JSON.stringify(DEFAULT_DB));
                 initFakeData();
             }
         }
 
-        function saveDB() { localStorage.setItem('gourmetOS_v2', JSON.stringify(window.RestaurantDB)); }
+        function saveDB() { 
+            localStorage.setItem('gourmetOS_v2', JSON.stringify(window.RestaurantDB)); 
+        }
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'gourmetOS_v2') {
+                loadDB();
+                if (!isDragging) renderAll(true);
+            }
+        });
 
         function initFakeData() {
             const now = Date.now();
@@ -241,13 +253,9 @@
             db.tables['T2'].orderCount = 1;
             db.tables['T2'].totalAmount = 339;
             db.tables['T2'].serviceStatus = 'water';
-            db.tables['T3'].status = 'dining';
-            db.tables['T3'].startTime = now - (10 * 60 * 1000);
-            db.tables['T3'].orderCount = 1;
-            db.tables['T3'].totalAmount = 580;
+            
             db.orders = [
-                { id: 'ORD-1001', tableId: 'T2', timestamp: now - (76 * 60 * 1000), status: 'served', items: [{ name: '奶油培根義大利麵', price: 220, comboName: '經典套餐', comboPrice: 119, subItems: ['可口可樂', '法式烤布蕾'], itemTotal: 339, basePrice: 220, note: '' }], total: 339 },
-                { id: 'ORD-1002', tableId: 'T3', timestamp: now - (10 * 60 * 1000), status: 'pending', items: [{ name: '紐約客牛排', price: 580, comboName: '單點', comboPrice: 0, subItems: [], itemTotal: 580, basePrice: 580, note: '五分熟' }], total: 580 }
+                { id: 'ORD-' + generateId(), tableId: 'T2', timestamp: now - (76 * 60 * 1000), status: 'served', items: [{ name: '奶油培根義大利麵', price: 220, comboName: '經典套餐', comboPrice: 119, subItems: ['可口可樂', '法式烤布蕾'], itemTotal: 339, basePrice: 220, note: '' }], total: 339 }
             ];
             db.menu[3].available = false;
         }
@@ -257,9 +265,11 @@
             renderAll();
             setInterval(() => {
                 const db = window.RestaurantDB;
-                if (db.view === 'admin' && db.uiState.adminTab === 'tables') renderAdminView(document.getElementById('app-container'));
-                if (db.view === 'kitchen') renderKitchenView(document.getElementById('app-container'));
-            }, 10000); 
+                if (!isDragging) {
+                    if (db.view === 'admin' && db.uiState.adminTab === 'tables') renderAdminView(document.getElementById('app-container'), false);
+                    if (db.view === 'kitchen') renderKitchenView(document.getElementById('app-container'));
+                }
+            }, 5000); 
             if (window.RestaurantDB.view === 'customer' && !window.RestaurantDB.currentTableId) showTableSelectModal();
         }
 
@@ -273,48 +283,73 @@
             }
         }
 
-        function renderAll() {
+        function renderAll(fromSync = false) {
+            if (isRenderBlocked && fromSync) return;
+
             const db = window.RestaurantDB;
-            const container = document.getElementById('app-container');
+            const appContainer = document.getElementById('app-container');
+            const categoryContainer = document.getElementById('category-bar-container');
             const body = document.body;
+            
+            // 更新導航按鈕
             ['customer', 'kitchen', 'admin'].forEach(v => {
                 const btn = document.getElementById(`btn-${v}`);
-                if (v === db.view) {
-                    btn.classList.add('bg-orange-500', 'text-white', 'shadow');
-                    btn.classList.remove('text-gray-600', 'hover:bg-gray-200');
-                } else {
-                    btn.classList.remove('bg-orange-500', 'text-white', 'shadow');
-                    btn.classList.add('text-gray-600', 'hover:bg-gray-200');
+                if (btn) {
+                    if (v === db.view) {
+                        btn.classList.add('bg-orange-500', 'text-white', 'shadow');
+                        btn.classList.remove('text-gray-600', 'hover:bg-gray-200');
+                    } else {
+                        btn.classList.remove('bg-orange-500', 'text-white', 'shadow');
+                        btn.classList.add('text-gray-600', 'hover:bg-gray-200');
+                    }
                 }
             });
+
             const navActions = document.getElementById('customer-nav-actions');
+            
             if (db.view === 'customer') {
                 body.classList.remove('kitchen-mode');
                 navActions.classList.remove('hidden');
                 navActions.classList.add('flex');
                 document.getElementById('nav-table-id').innerText = db.currentTableId ? db.tables[db.currentTableId].name : '--';
-                renderCustomerView(container);
-            } else if (db.view === 'kitchen') {
-                body.classList.add('kitchen-mode');
-                navActions.classList.add('hidden');
-                navActions.classList.remove('flex');
-                renderKitchenView(container);
-            } else if (db.view === 'admin') {
-                body.classList.remove('kitchen-mode');
-                navActions.classList.add('hidden');
-                navActions.classList.remove('flex');
-                renderAdminView(container);
+                
+                // [架構修正] 顯示獨立的分類列
+                categoryContainer.classList.remove('hidden');
+                categoryContainer.classList.add('block');
+                
+                // 渲染客戶視圖 (分為兩部分渲染)
+                renderCustomerView(appContainer, categoryContainer);
+
+            } else {
+                // [架構修正] 其他模式下隱藏分類列
+                categoryContainer.classList.add('hidden');
+                categoryContainer.classList.remove('block');
+
+                if (db.view === 'kitchen') {
+                    body.classList.add('kitchen-mode');
+                    navActions.classList.add('hidden');
+                    navActions.classList.remove('flex');
+                    renderKitchenView(appContainer);
+                } else if (db.view === 'admin') {
+                    body.classList.remove('kitchen-mode');
+                    navActions.classList.add('hidden');
+                    navActions.classList.remove('flex');
+                    renderAdminView(appContainer, fromSync);
+                }
             }
-            saveDB();
+            
+            if (!fromSync) saveDB();
         }
 
         function switchView(viewName) {
             window.RestaurantDB.view = viewName;
+            lastKitchenDataHash = '';
             saveDB();
             if (viewName === 'customer' && !window.RestaurantDB.currentTableId) showTableSelectModal();
             else renderAll();
         }
 
+        // --- 點餐邏輯 ---
         function selectCombo(id, cid) {
             const db = window.RestaurantDB;
             const needs = db.combos[cid].needs;
@@ -333,7 +368,8 @@
                 window.RestaurantDB.uiState.tempSelections[id] = sel;
             }
             sel.note = note;
-            saveDB();
+            saveDB(); 
+            renderAll(); 
         }
 
         function addToCart(id) {
@@ -427,24 +463,29 @@
             saveDB();
         }
 
-        function renderCustomerView(container) {
+        function renderCustomerView(mainContainer, categoryContainer) {
             const db = window.RestaurantDB;
-            // 修正版：Sticky Header 加上 z-50 和背景色，防止被餐點擋住
-            let html = `
-                <div class="sticky top-0 z-50 bg-white border-b shadow-sm py-3 overflow-x-auto hide-scrollbar whitespace-nowrap px-4">
+            const categories = db.categories || [];
+            
+            // 1. 渲染分類按鈕到獨立容器
+            const catHtml = `
+                <div class="py-3 overflow-x-auto hide-scrollbar whitespace-nowrap px-4 bg-white">
                     <div class="flex space-x-2">
-                        ${db.categories.map(cat => `<button onclick="filterCategory('${cat.id}')" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all ${db.uiState.activeCategory === cat.id ? 'bg-orange-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">${cat.name}</button>`).join('')}
+                        ${categories.map(cat => `<button onclick="filterCategory('${cat.id}')" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all ${db.uiState.activeCategory === cat.id ? 'bg-orange-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">${cat.name}</button>`).join('')}
                     </div>
                 </div>
-                <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24 pt-4">
             `;
+            categoryContainer.innerHTML = catHtml;
+
+            // 2. 渲染餐點內容到主容器
+            let html = `<div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24 pt-4">`;
+            
             const filteredMenu = db.uiState.activeCategory === 'all' ? db.menu : db.menu.filter(m => m.category === db.uiState.activeCategory);
             
             filteredMenu.forEach(item => {
                 const tempState = db.uiState.tempSelections[item.id] || { comboType: 'none', choices: {}, note: null };
                 const isExpanded = db.uiState.expandedCardId === item.id;
                 const isSoldOut = !item.available;
-                
                 const isMainCourse = item.allowCombo;
 
                 html += `
@@ -454,7 +495,7 @@
                             <div class="flex p-4 gap-4">
                                 <div class="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden relative">
                                     <div class="absolute inset-0 flex items-center justify-center bg-orange-50 text-4xl select-none">${item.emoji}</div>
-                                    <img src="${item.image}" alt="${item.name}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 z-10" loading="lazy" onerror="this.style.display='none'">
+                                    <img src="${item.image}" alt="${item.name}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 z-10" loading="lazy" onerror="handleImageError(this)">
                                 </div>
                                 <div class="flex-1 flex flex-col justify-between">
                                     <div>
@@ -498,14 +539,17 @@
                 `;
             });
             html += `</div>`;
+            
+            // 浮動購物車按鈕
             if (db.cart.length > 0) {
                 const total = db.cart.reduce((sum, i) => sum + i.itemTotal, 0);
                 html += `<div class="fixed bottom-4 left-4 right-4 z-40 max-w-7xl mx-auto fade-in"><div class="bg-gray-900 text-white rounded-xl shadow-2xl p-4 flex justify-between items-center cursor-pointer hover:bg-gray-800 transition" onclick="toggleModal('checkout-modal', true)"><div class="flex items-center gap-4"><div class="bg-orange-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow">${db.cart.length}</div><div class="flex flex-col"><span class="text-xs text-gray-400">小計</span><span class="font-bold text-lg">$${total}</span></div></div><div class="flex items-center gap-2 font-bold text-sm bg-white text-gray-900 px-4 py-2 rounded-lg">送出訂單 <i class="fa-solid fa-chevron-right text-xs"></i></div></div></div>`;
             }
-            container.innerHTML = html;
+            
+            mainContainer.innerHTML = html;
         }
 
-        // --- Unified Drag Engine ---
+        // --- Drag Engine ---
         let isDragging = false;
         let dragId = null;
         let dragStartMouseX = 0, dragStartMouseY = 0;
@@ -523,21 +567,28 @@
 
         function endDrag() {
             if (!isDragging || !dragId) return;
+            isRenderBlocked = false; 
             const el = document.getElementById(`table-node-${dragId}`);
             if(el) {
-                const containerRect = document.getElementById('floor-plan-area').getBoundingClientRect();
-                const rect = el.getBoundingClientRect();
-                let x = rect.left - containerRect.left;
-                let y = rect.top - containerRect.top;
-                if (x < 0) x = 0; if (y < 0) y = 0;
-                if (x > containerRect.width - 80) x = containerRect.width - 80;
-                if (y > containerRect.height - 80) y = containerRect.height - 80;
-                window.RestaurantDB.tables[dragId].x = x;
-                window.RestaurantDB.tables[dragId].y = y;
-                renderAll(); 
+                const containerEl = document.getElementById('floor-plan-area');
+                if(containerEl) {
+                    const containerRect = containerEl.getBoundingClientRect();
+                    const rect = el.getBoundingClientRect();
+                    let x = rect.left - containerRect.left;
+                    let y = rect.top - containerRect.top;
+                    
+                    if (x < 0) x = 0; if (y < 0) y = 0;
+                    if (x > containerRect.width - 60) x = containerRect.width - 60;
+                    if (y > containerRect.height - 60) y = containerRect.height - 60;
+                    
+                    window.RestaurantDB.tables[dragId].x = x;
+                    window.RestaurantDB.tables[dragId].y = y;
+                    saveDB();
+                }
             }
             isDragging = false;
             dragId = null;
+            renderAll(); 
         }
 
         function onMouseDown(e, id) {
@@ -546,6 +597,7 @@
             
             e.preventDefault(); 
             isDragging = true;
+            isRenderBlocked = true; 
             dragId = id;
             dragStartMouseX = e.clientX;
             dragStartMouseY = e.clientY;
@@ -563,6 +615,7 @@
             if (e.target.closest('.delete-btn')) return;
             
             isDragging = true;
+            isRenderBlocked = true;
             dragId = id;
             const touch = e.touches[0];
             dragStartMouseX = touch.clientX;
@@ -574,7 +627,9 @@
         function onTouchMove(e) { if (!isDragging) return; e.preventDefault(); const touch = e.touches[0]; updatePosition(touch.clientX, touch.clientY); }
         function onTouchEnd(e) { endDrag(); }
 
-        function renderAdminView(container) {
+        function renderAdminView(container, fromSync) {
+            if (fromSync && isDragging) return;
+
             const db = window.RestaurantDB;
             const tab = db.uiState.adminTab;
             const isEditing = db.uiState.isEditingMap;
@@ -590,7 +645,7 @@
                         <button onclick="resetDemo()" class="ml-4 bg-red-100 text-red-600 text-xs px-3 py-1 rounded-full hover:bg-red-200 font-bold border border-red-200">重置Demo</button>
                     </div>
                 </div>
-                <div class="max-w-4xl mx-auto p-4 flex-1 flex flex-col">
+                <div class="max-w-4xl mx-auto p-4 flex-1 flex flex-col w-full">
             `;
 
             if (tab === 'tables') {
@@ -621,13 +676,17 @@
                 const revenue = db.orders.filter(o => o.status === 'served').reduce((s,o)=>s+o.total, 0);
                 const count = db.orders.filter(o => o.status === 'served').length;
                 const itemCounts = {};
-                db.orders.forEach(o => { o.items.forEach(i => { itemCounts[i.name] = (itemCounts[i.name] || 0) + 1; }); });
+                db.orders.forEach(o => { 
+                    if(o.status !== 'cancelled') {
+                        o.items.forEach(i => { itemCounts[i.name] = (itemCounts[i.name] || 0) + 1; }); 
+                    }
+                });
                 const sortedItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
                 const maxCount = sortedItems.length > 0 ? sortedItems[0][1] : 1;
 
                 html += `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        <div class="bg-white p-6 rounded-xl shadow border-l-4 border-green-500"><h3 class="text-gray-500 text-sm font-bold uppercase">今日營收</h3><p class="text-4xl font-bold mt-2">$${revenue.toLocaleString()}</p></div>
+                        <div class="bg-white p-6 rounded-xl shadow border-l-4 border-green-500"><h3 class="text-gray-500 text-sm font-bold uppercase">今日營收 (已出餐)</h3><p class="text-4xl font-bold mt-2">$${Math.round(revenue * 1.1).toLocaleString()} <span class="text-xs text-gray-400 font-normal">含服務費</span></p></div>
                         <div class="bg-white p-6 rounded-xl shadow border-l-4 border-blue-500"><h3 class="text-gray-500 text-sm font-bold uppercase">出餐數</h3><p class="text-4xl font-bold mt-2">${count}</p></div>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow"><h3 class="font-bold text-lg text-gray-800 mb-4 border-b pb-2">🔥 熱銷商品排行榜</h3><div class="space-y-4">
@@ -678,9 +737,8 @@
                 infoHtml = `<div class="text-[10px] text-gray-400">移動</div>`;
             }
 
-            const serviceIcon = t.serviceStatus ? `<div class="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow service-calling text-xs">🔔</div>` : '';
+            const serviceIcon = t.serviceStatus ? `<div class="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow service-calling text-xs z-10 border border-white">🔔</div>` : '';
 
-            // 加入了 event.stopPropagation() 防止冒泡到父層
             return `
                 <div id="table-node-${t.id}" class="table-node absolute flex flex-col items-center justify-center shadow-sm ${shapes[t.type]} ${colorClass} ${isEditing ? 'table-editing' : ''}" 
                     style="left: ${t.x}px; top: ${t.y}px;"
@@ -693,7 +751,7 @@
                     ${serviceIcon}
                     <div class="font-bold leading-none pointer-events-none">${t.name}</div>
                     <div class="pointer-events-none">${infoHtml}</div>
-                    ${isEditing ? `<div class="delete-btn absolute -bottom-6 bg-red-100 text-red-500 rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-200" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()" onclick="deleteTable('${t.id}')">×</div>` : ''}
+                    ${isEditing ? `<div class="delete-btn absolute -bottom-2 -right-2 bg-red-100 text-red-500 rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-200 border border-red-200" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()" onclick="deleteTable('${t.id}')"><i class="fa-solid fa-trash"></i></div>` : ''}
                 </div>
             `;
         }
@@ -718,6 +776,7 @@
                 orderCount: 0,
                 totalAmount: 0
             };
+            saveDB();
             renderAll();
         }
 
@@ -725,6 +784,7 @@
             const newName = prompt('請輸入桌號名稱', window.RestaurantDB.tables[id].name);
             if (newName) {
                 window.RestaurantDB.tables[id].name = newName;
+                saveDB();
                 renderAll();
             }
         }
@@ -732,6 +792,7 @@
         function deleteTable(id) {
             if(confirm('確定刪除此桌位？')) {
                 delete window.RestaurantDB.tables[id];
+                saveDB();
                 renderAll();
             }
         }
@@ -741,11 +802,14 @@
             if (t.status === 'empty') {
                 if(confirm(`是否開啟 ${t.name}？`)) openTable(tid);
             } else {
-                if(confirm(`是否清空 ${t.name} (結帳離場)？`)) clearTable(tid);
+                if(t.orderCount > 0) {
+                     if(confirm(`桌號 ${t.name} 尚有訂單，確認結帳並清空？`)) clearTable(tid);
+                } else {
+                     if(confirm(`是否清空 ${t.name}？`)) clearTable(tid);
+                }
             }
         }
 
-        // --- Helpers ---
         function filterCategory(id) { window.RestaurantDB.uiState.activeCategory = id; renderAll(); }
         function toggleCard(id) { 
             const db = window.RestaurantDB; 
@@ -754,16 +818,24 @@
             renderAll(); 
         }
         function setAdminTab(t) { window.RestaurantDB.uiState.adminTab = t; renderAll(); }
-        function toggleItemAvailability(itemId) { const item = window.RestaurantDB.menu.find(m => m.id === itemId); if (item) { item.available = !item.available; renderAll(); } }
+        function toggleItemAvailability(itemId) { 
+            const item = window.RestaurantDB.menu.find(m => m.id === itemId); 
+            if (item) { 
+                item.available = !item.available; 
+                saveDB();
+                renderAll(); 
+            } 
+        }
         function clearTable(tid) {
-            if(!confirm('確認客人已買單離場，要清空桌位嗎？')) return;
             const t = window.RestaurantDB.tables[tid];
             t.status = 'empty'; t.startTime = null; t.orderCount = 0; t.totalAmount = 0; t.serviceStatus = null;
+            saveDB();
             renderAll();
         }
         function openTable(tid) {
             const t = window.RestaurantDB.tables[tid];
             t.status = 'seated';
+            saveDB();
             renderAll();
         }
         function showTableSelectModal() {
@@ -781,43 +853,67 @@
             const db = window.RestaurantDB;
             db.currentTableId = tableId;
             document.getElementById('table-select-modal').classList.add('hidden');
-            if (db.tables[tableId].status === 'empty') db.tables[tableId].status = 'seated';
+            if (db.tables[tableId].status === 'empty') {
+                db.tables[tableId].status = 'seated';
+                saveDB();
+            }
             renderAll();
         }
 
-        // 新增：取消已送出的訂單
         function cancelOrder(orderId) {
             if(!confirm('確定要取消這筆訂單嗎？')) return;
             const db = window.RestaurantDB;
             const orderIndex = db.orders.findIndex(o => o.id === orderId);
             
             if (orderIndex > -1) {
-                const order = db.orders[orderIndex];
+                db.orders[orderIndex].status = 'cancelled';
                 
-                // 扣除桌位金額
-                if (db.tables[order.tableId]) {
-                    db.tables[order.tableId].totalAmount -= order.total;
-                    db.tables[order.tableId].orderCount -= 1;
-                    if(db.tables[order.tableId].totalAmount < 0) db.tables[order.tableId].totalAmount = 0;
+                const tableId = db.orders[orderIndex].tableId;
+                if (db.tables[tableId]) {
+                    const activeOrders = db.orders.filter(o => o.tableId === tableId && o.status !== 'cancelled');
+                    db.tables[tableId].totalAmount = activeOrders.reduce((sum, o) => sum + o.total, 0);
+                    db.tables[tableId].orderCount = activeOrders.length;
                 }
 
-                // 移除訂單
-                db.orders.splice(orderIndex, 1);
-                
                 alert('訂單已取消');
-                renderAll(); // 全局刷新
-                updateHistoryModal(); // 刷新 Modal 內容
+                saveDB();
+                renderAll(); 
+                updateHistoryModal();
             }
         }
 
-        function resolveService(tid) {
-            const t = window.RestaurantDB.tables[tid];
-            t.serviceStatus = null;
-            renderAll();
+        function callService(type) {
+            const db = window.RestaurantDB;
+            if (!db.currentTableId) {
+                alert('請先選擇桌號');
+                return;
+            }
+            
+            const table = db.tables[db.currentTableId];
+            let msg = '';
+            
+            if (type === 'checkout') {
+                msg = 'checkout';
+                toggleModal('history-modal', false);
+            } else {
+                msg = type;
+            }
+
+            table.serviceStatus = msg;
+            saveDB(); 
+            renderAll(); 
+            
+            alert(`已通知服務人員 (${type === 'water' ? '加水' : (type === 'checkout' ? '結帳' : '呼叫')})`);
         }
+
         function renderKitchenView(container) {
             const db = window.RestaurantDB;
             const pending = db.orders.filter(o => o.status === 'pending').sort((a,b) => a.timestamp - b.timestamp);
+            
+            const currentHash = JSON.stringify(pending) + JSON.stringify(db.tables);
+            if (currentHash === lastKitchenDataHash) return; 
+            lastKitchenDataHash = currentHash;
+
             let html = `<div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
             if (pending.length === 0) html += `<div class="col-span-full flex flex-col items-center justify-center text-gray-500 h-[60vh]"><i class="fa-solid fa-check-circle text-6xl mb-4 text-green-500"></i><p>目前沒有待處理訂單</p></div>`;
             pending.forEach(o => {
@@ -825,8 +921,9 @@
                 const urgent = mins >= 10;
                 const tableName = db.tables[o.tableId]?.name || 'Unknown';
                 const serviceReq = db.tables[o.tableId]?.serviceStatus;
+                
                 html += `
-                    <div class="bg-gray-800 rounded-lg p-4 flex flex-col justify-between min-h-[300px] shadow-lg ${urgent ? 'kitchen-card-urgent' : 'border border-gray-700'} relative overflow-hidden">
+                    <div class="bg-gray-800 rounded-lg p-4 flex flex-col justify-between min-h-[300px] shadow-lg ${urgent ? 'kitchen-card-urgent' : 'border border-gray-700'} relative overflow-hidden fade-in">
                         ${serviceReq ? `<div class="absolute top-0 right-0 bg-yellow-500 text-black font-bold px-3 py-1 text-xs uppercase animate-pulse">Call: ${serviceReq}</div>` : ''}
                         <div>
                             <div class="flex justify-between items-start mb-4 pb-2 border-b border-gray-700">
@@ -857,10 +954,14 @@
         function completeOrder(id) {
             const db = window.RestaurantDB;
             const o = db.orders.find(x => x.id === id);
-            if(o) { o.status = 'served'; renderAll(); }
+            
+            if(o) { 
+                o.status = 'served'; 
+                saveDB();
+                renderAll(); 
+            }
         }
 
-        // 補上 processPayment
         function processPayment() {
             const db = window.RestaurantDB;
             const tId = db.currentTableId;
@@ -872,35 +973,42 @@
                 table.status = 'dining';
                 table.startTime = Date.now();
             }
-            table.orderCount += 1;
-            table.totalAmount += total;
+            
             db.orders.push({
-                id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
+                id: 'ORD-' + generateId(),
                 tableId: tId,
                 timestamp: Date.now(),
                 status: 'pending',
                 items: JSON.parse(JSON.stringify(db.cart)),
                 total: total
             });
+            
+            const activeOrders = db.orders.filter(o => o.tableId === tId && o.status !== 'cancelled');
+            table.totalAmount = activeOrders.reduce((sum, o) => sum + o.total, 0);
+            table.orderCount = activeOrders.length;
+
             db.cart = [];
             toggleModal('checkout-modal', false);
+            saveDB();
             alert(`點餐成功！\n桌號: ${table.name}\n訂單已送出。`);
             switchView('customer');
         }
 
-        // 補上 updateHistoryModal (解決 toggleModal 報錯)
         function updateHistoryModal() {
             const db = window.RestaurantDB;
             if (!db.currentTableId) return;
-            const myOrders = db.orders.filter(o => o.tableId === db.currentTableId).sort((a,b) => b.timestamp - a.timestamp);
+            const myOrders = db.orders.filter(o => o.tableId === db.currentTableId && o.status !== 'cancelled').sort((a,b) => b.timestamp - a.timestamp);
             const container = document.getElementById('history-list');
+            const subTotalEl = document.getElementById('history-subtotal');
+            const serviceFeeEl = document.getElementById('history-service-fee');
             const totalEl = document.getElementById('history-total');
-            let html = '', grandTotal = 0;
+            
+            let html = '', subTotal = 0;
             if (myOrders.length === 0) {
-                html = '<div class="text-center text-gray-400 py-10">尚無點餐紀錄</div>';
+                html = '<div class="text-center text-gray-400 py-10">尚無有效點餐紀錄</div>';
             } else {
                 myOrders.forEach(order => {
-                    grandTotal += order.total;
+                    subTotal += order.total;
                     const timeStr = new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     const isPending = order.status === 'pending';
                     html += `
@@ -936,10 +1044,24 @@
                 });
             }
             container.innerHTML = html;
-            totalEl.innerText = `$${grandTotal}`;
+            
+            const serviceFee = Math.round(subTotal * 0.1);
+            const finalTotal = subTotal + serviceFee;
+            
+            subTotalEl.innerText = `$${subTotal}`;
+            serviceFeeEl.innerText = `$${serviceFee}`;
+            totalEl.innerText = `$${finalTotal}`;
         }
 
-        // 補上 toggleModal
+        function resolveService(tid) {
+            const db = window.RestaurantDB;
+            if(db.tables[tid]) {
+                db.tables[tid].serviceStatus = null;
+                saveDB();
+                renderAll();
+            }
+        }
+
         function toggleModal(id, show) {
             const el = document.getElementById(id);
             if(show) { 
